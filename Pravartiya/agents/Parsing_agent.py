@@ -171,33 +171,6 @@ _CITY_PAT = (
     r"|kolkata|calcutta|bangalore|bengaluru|ahmedabad|pune)"
 )
 
-# NOTIFICATION_DATE_PATTERNS = [
-#     # Most specific: "Mumbai, the 15th April, 2026"
-#     re.compile(
-#         _CITY_PAT + r",?\s+the\s+(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*\d{4})",
-#         re.IGNORECASE
-#     ),
-#     # City without "the": "Mumbai, 15 April 2026"
-#     re.compile(
-#         _CITY_PAT + r",?\s+(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*\d{4})",
-#         re.IGNORECASE
-#     ),
-#     # "dated the 15th April, 2026" or "dated 15th April, 2026"
-#     re.compile(
-#         r"dated\s+(?:the\s+)?(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*\d{4})",
-#         re.IGNORECASE
-#     ),
-#     # Bare "the 15th April, 2026" anywhere in top section
-#     re.compile(
-#         r"\bthe\s+(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*\d{4})\b",
-#         re.IGNORECASE
-#     ),
-#     # Broadest fallback: any "15th April, 2026" / "15 April 2026"
-#     re.compile(
-#         r"\b(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,}\s*,?\s*\d{4})\b"
-#     ),
-# ]
-
 NOTIFICATION_DATE_PATTERNS = [
 
     # Mumbai, the 15th April, 2026
@@ -284,20 +257,6 @@ def determine_effective_date(text: str) -> str:
 # PDF TEXT EXTRACTION
 # ============================================================
 
-# def extract_pdf_text(pdf_path: Path) -> str:
-#     raw = partition_pdf(
-#         filename=str(pdf_path),
-#         strategy="fast",
-#         include_page_breaks=False
-#     )
-#     text = "\n".join(str(el) for el in raw if el).strip()
-
-#     if not text:
-#         logging.info("Fallback to hi_res OCR")
-#         raw = partition_pdf(filename=str(pdf_path), strategy="hi_res")
-#         text = "\n".join(str(el) for el in raw if el).strip()
-
-#     return text
 def extract_pdf_text(pdf_path: Path) -> str:
 
     raw = partition_pdf(
@@ -386,6 +345,374 @@ def is_amendment_regulation(text: str) -> bool:
 
 
 # ============================================================
+# MATCH AMENDMENT PDF WITH LAST-AMENDED PDF
+# ============================================================
+
+def normalize_regulation_title(title: str) -> str:
+
+    if not isinstance(title, str):
+        return ""
+
+    title = re.sub(
+        r'\[last\s+amended\s+on.*?\]',
+        '',
+        title,
+        flags=re.IGNORECASE
+    )
+
+    title = re.sub(
+        r'\(amendment\)',
+        '',
+        title,
+        flags=re.IGNORECASE
+    )
+
+    title = re.sub(
+        r'regulations,\s*\d{4}',
+        'regulations',
+        title,
+        flags=re.IGNORECASE
+    )
+
+    title = re.sub(
+        r'\s+',
+        ' ',
+        title
+    ).strip()
+
+    return title.lower()
+
+
+def find_last_amended_pdf(
+    amendment_title: str,
+    df: pd.DataFrame
+):
+
+    amendment_base = normalize_regulation_title(
+        amendment_title
+    )
+
+    amended_rows = df[
+        df["Title"].str.contains(
+            "last amended on",
+            case=False,
+            na=False
+        )
+    ]
+
+    for _, row in amended_rows.iterrows():
+
+        candidate_base = normalize_regulation_title(
+            row["Title"]
+        )
+
+        if amendment_base == candidate_base:
+
+            return row
+
+    return None
+
+# ============================================================
+# FOOTER AMENDMENT PARSER
+# ============================================================
+
+FOOTER_ACTION_PATTERN = re.compile(
+    r'(substituted|inserted|omitted)',
+    re.IGNORECASE
+)
+
+
+def build_issue_date_patterns(issue_date: str):
+
+    try:
+
+        dt = pd.to_datetime(issue_date)
+
+        return [
+
+            dt.strftime("%d.%m.%Y"),
+            dt.strftime("%d-%m-%Y"),
+            dt.strftime("%d/%m/%Y"),
+        ]
+
+    except Exception:
+
+        return []
+
+
+def extract_footer_blocks(
+    text: str,
+    issue_date: str
+):
+
+    patterns = build_issue_date_patterns(
+        issue_date
+    )
+
+    lines = text.splitlines()
+
+    footer_blocks = []
+
+    for idx, line in enumerate(lines):
+
+        nearby = "\n".join(
+            lines[
+                max(0, idx-3):
+                min(len(lines), idx+5)
+            ]
+        )
+
+        nearby_lower = nearby.lower()
+
+        has_date = any(
+            p in nearby
+            for p in patterns
+        )
+
+        has_action = FOOTER_ACTION_PATTERN.search(
+            nearby_lower
+        )
+
+        if not has_date:
+            continue
+
+        if not has_action:
+            continue
+
+        footer_blocks.append(
+            nearby
+        )
+    footer_blocks = list(set(footer_blocks))
+    return footer_blocks
+
+
+# ============================================================
+# REFERENCE NUMBER EXTRACTION
+# ============================================================
+
+def extract_reference_number(block: str):
+
+    match = re.search(
+        r'(\d+)\s+(substituted|inserted|omitted)',
+        block,
+        re.IGNORECASE
+    )
+
+    if match:
+        return match.group(1)
+
+    return None
+
+
+# ============================================================
+# MAIN CLAUSE EXTRACTION
+# ============================================================
+
+def extract_main_clause(
+    text: str,
+    reference_number: str
+):
+
+    lines = text.splitlines()
+
+    # pattern = re.compile(
+    #     rf'\b{reference_number}\b',
+    #     re.IGNORECASE
+    # )
+    pattern = re.compile(
+        rf'{reference_number}\[',
+        re.IGNORECASE
+    )
+    for idx, line in enumerate(lines):
+
+        if pattern.search(line):
+
+            context = "\n".join(
+                lines[
+                    max(0, idx-2):
+                    min(len(lines), idx+20)
+                ]
+            )
+
+            return context
+
+    return ""
+
+
+# ============================================================
+# AMENDMENT SUMMARY PROMPT
+# ============================================================
+
+# AMENDMENT_PROMPT = PromptTemplate(
+#     input_variables=[
+#         "main_clause",
+#         "footer_block"
+#     ],
+#     template="""
+# You are a SEBI regulatory analyst.
+
+# You are given:
+
+# 1. Current amended clause
+# 2. Footer amendment note
+
+# Your task:
+# Explain ONLY the regulatory amendment made.
+
+# Rules:
+# - Maximum 2 bullet points
+# - Very concise
+# - Mention inserted/substituted/omitted effect
+# - Ignore legal boilerplate
+# - Focus on compliance impact
+
+# CURRENT CLAUSE:
+# {main_clause}
+
+# FOOTER NOTE:
+# {footer_block}
+
+# SUMMARY:
+# """
+# )
+AMENDMENT_PROMPT = PromptTemplate(
+    input_variables=[
+        "main_clause",
+        "footer_block",
+        "effective_date",
+        "issue_date",
+    ],
+    template="""
+You are a SEBI regulatory analyst preparing Pravartiya newsletter summaries.
+
+You are given:
+
+1. Current amended provision
+2. Footer amendment note
+
+Your task:
+Generate a professional newsletter summary for SEBI Regulations.
+
+MANDATORY RULES:
+
+1. Start summary with wording like:
+   - "SEBI has amended..."
+   - "SEBI has introduced..."
+   - "SEBI has revised..."
+   - "SEBI has substituted..."
+   depending on amendment context.
+
+2. Summary MUST contain:
+   - Date of circular
+   - Effective date
+   - Gist of amendment
+   - Existing provision prior to amendment
+
+3. Mention:
+   - what changed
+   - what existed earlier
+   - compliance implication
+
+4. If footer says:
+   - inserted
+     → mention this is a newly inserted provision
+     → no prior provision exists
+
+   - substituted
+     → explain old vs new provision
+
+   - omitted
+     → explain what requirement has been removed
+
+5. Avoid:
+   - circular reference numbers
+   - vague legal wording
+   - email IDs
+   - procedural boilerplate
+   - copying regulation text directly
+
+6. Use concise newsletter style.
+
+7. End with:
+   - Action point for listed entities/intermediaries if applicable.
+
+8. Maximum 6 bullet points.
+
+ISSUE DATE:
+{issue_date}
+
+EFFECTIVE DATE:
+{effective_date}
+
+CURRENT AMENDED CLAUSE:
+{main_clause}
+
+FOOTER AMENDMENT NOTE:
+{footer_block}
+
+FINAL NEWSLETTER SUMMARY:
+"""
+)
+
+# ============================================================
+# GENERATE AMENDMENT SUMMARIES
+# ============================================================
+
+# def generate_amendment_summaries(amended_pdf_text: str,issue_date: str):
+def generate_amendment_summaries(amended_pdf_text: str,issue_date: str,effective_date: str):
+    footer_blocks = extract_footer_blocks(
+        amended_pdf_text,
+        issue_date
+    )
+
+    summaries = []
+
+    for block in footer_blocks:
+
+        try:
+
+            ref_no = extract_reference_number(
+                block
+            )
+
+            if not ref_no:
+                continue
+
+            main_clause = extract_main_clause(
+                amended_pdf_text,
+                ref_no
+            )
+
+            if not main_clause:
+                continue
+
+            chain = AMENDMENT_PROMPT | llm
+
+            # result = chain.invoke({
+
+            #     "main_clause": main_clause[:4000],
+            #     "footer_block": block[:2000]
+            # })
+            result = chain.invoke({
+
+                "main_clause": main_clause[:4000],
+                "footer_block": block[:2000],
+                "issue_date": issue_date,
+                "effective_date": effective_date,
+            })
+            summaries.append(
+                str(result).strip()
+            )
+
+        except Exception as e:
+
+            logging.error(
+                f"Amendment summary failed: {e}"
+            )
+
+    return "\n".join(summaries)
+
+# ============================================================
 # FORMAT THE FINAL NEWSLETTER SUMMARY BLOCK
 #
 # Format:
@@ -399,6 +726,7 @@ def build_newsletter_summary(
     title: str,
     issue_date: str,
     effective_date: str,
+    amendment_summary: str,
 ) -> str:
     """
     Build the two-line newsletter header for a regulation entry.
@@ -425,9 +753,12 @@ def build_newsletter_summary(
     else:
         line2 = "Effective date - N/A"
 
-    return f"{line1}\n{line2}"
-
-
+    # return f"{line1}\n{line2}"
+    return (
+        f"{line1}\n"
+        f"{line2}\n\n"
+        f"{amendment_summary}"
+    )
 # ============================================================
 # EXCEL UPDATE
 # ============================================================
@@ -461,7 +792,8 @@ def update_excel(row: pd.Series):
 # PROCESS A SINGLE ROW
 # ============================================================
 
-def process_newsletter_row(row: pd.Series) -> pd.Series | None:
+# def process_newsletter_row(row: pd.Series) -> pd.Series | None:
+def process_newsletter_row(row: pd.Series,df_sebi: pd.DataFrame) -> pd.Series | None:
     """
     Main processing function for one Excel row.
 
@@ -501,8 +833,7 @@ def process_newsletter_row(row: pd.Series) -> pd.Series | None:
     # DEBUG: log raw extracted text head so we can tune patterns
     logging.info(f"--- RAW TEXT SAMPLE (first 3000 chars) ---\n{repr(text[:3000])}")
     effective_date = determine_effective_date(text)
-    logging.info(f"Effective date for {pdf_path.name}: {effective_date!r}")
-
+    
     # ── STEP 4: Get issue date from the Excel row ─────────────
     # Try common column names that the searching agent may use.
     issue_date = ""
@@ -515,15 +846,60 @@ def process_newsletter_row(row: pd.Series) -> pd.Series | None:
             else:
                 issue_date = str(val).strip()
             break
+    # ========================================================
+    # FIND LAST-AMENDED PDF
+    # ========================================================
+
+    amendment_summary = ""
+
+    amended_row = find_last_amended_pdf(
+        title,
+        df_sebi
+    )
+
+    if amended_row is not None:
+
+        try:
+
+            amended_pdf_path = Path(
+                amended_row["Path"]
+            )
+
+            amended_text = extract_pdf_text(
+                amended_pdf_path
+            )
+
+            # amendment_summary = generate_amendment_summaries(
+            #     amended_text,
+            #     issue_date
+            # )
+            amendment_summary = generate_amendment_summaries(
+                amended_text,
+                issue_date,
+                effective_date
+            )
+            logging.info(
+                f"Generated amendment summaries "
+                f"from {amended_pdf_path.name}"
+            )
+
+        except Exception as e:
+
+            logging.error(
+                f"Failed amendment extraction: {e}"
+            )
+    logging.info(f"Effective date for {pdf_path.name}: {effective_date!r}")
+
 
     # ── STEP 5: Build header-only newsletter entry ────────────
     # No LLM summary at this stage — just the two-line metadata header.
+
     final_summary = build_newsletter_summary(
         title=title,
         issue_date=issue_date,
         effective_date=effective_date,
+        amendment_summary=amendment_summary,
     )
-
     row["Summary"] = final_summary
     row["EmbeddingText"] = text[:8000]   # kept for future embedding use
     row["EffectiveDate"] = effective_date
@@ -562,7 +938,7 @@ def main(excel_file: str):
 
     for idx, row in df_sebi.iterrows():
         logging.info(f"[{idx+1}] Processing: {row.get('Title', '')[:80]}")
-        processed = process_newsletter_row(row)
+        processed = process_newsletter_row(row,df_sebi)
         if processed is None:
             continue
         update_excel(processed)
