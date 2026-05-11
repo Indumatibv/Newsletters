@@ -654,18 +654,321 @@ FINAL NEWSLETTER SUMMARY:
 """
 )
 
+FINAL_NEWSLETTER_PROMPT = PromptTemplate(
+    input_variables=[
+        "issue_date",
+        "effective_date",
+        "all_amendments"
+    ],
+    template="""
+You are preparing a professional Pravartiya newsletter summary
+for SEBI Regulation amendments.
+
+Your output must look like a concise legal-regulatory newsletter,
+NOT a legal analysis or document explanation.
+
+STRICT RULES:
+
+1. NEVER mention:
+   - reference numbers
+   - clause numbers
+   - excerpts
+   - "current clause"
+   - "footer note"
+   - "clarification"
+   - "this consolidated newsletter"
+   - "you"
+   - raw regulation text
+
+2. NEVER reproduce amendment text verbatim.
+
+3. Summarize ONLY the actual regulatory changes.
+
+4. Combine related amendments into grouped bullets.
+
+5. Focus on:
+   - what changed
+   - what existed earlier
+   - practical compliance implication
+
+6. Use concise professional newsletter language.
+
+7. Start directly with:
+   "SEBI has amended..."
+
+8. End with:
+   "Action Point for intermediaries/listed entities"
+
+9. Maximum 10 bullets.
+
+10. Output should read like:
+    - legal newsletter
+    - compliance update
+    - regulatory digest
+
+NOT like:
+    - legal interpretation
+    - clause extraction
+    - explanatory note
+
+ISSUE DATE:
+{issue_date}
+
+EFFECTIVE DATE:
+{effective_date}
+
+AMENDMENT CONTEXTS:
+{all_amendments}
+
+FINAL NEWSLETTER SUMMARY:
+"""
+)
+
+# FINAL_NEWSLETTER_PROMPT = PromptTemplate(
+#     input_variables=[
+#         "issue_date",
+#         "effective_date",
+#         "all_amendments"
+#     ],
+#     template="""
+# You are preparing a professional Pravartiya newsletter summary
+# for SEBI Regulation amendments.
+
+# Your output must look like a concise legal-regulatory newsletter,
+# NOT a legal analysis, clause explanation, or document interpretation.
+
+# STRICT RULES:
+
+# 1. NEVER mention:
+#    - reference numbers
+#    - clause numbers
+#    - excerpts
+#    - "current clause"
+#    - "footer note"
+#    - "clarification"
+#    - "this consolidated newsletter"
+#    - "you"
+#    - raw regulation text
+
+# 2. NEVER reproduce amendment text verbatim.
+
+# 3. Summarize ONLY the actual regulatory amendments.
+
+# 4. Combine related amendments into grouped bullets.
+
+# 5. Focus ONLY on:
+#    - what changed
+#    - what existed earlier
+#    - compliance implication
+
+# 6. DO NOT repeat:
+#    - issue date
+#    - effective date
+
+# These dates are already provided in the heading.
+
+# 7. Use concise professional newsletter language.
+
+# 8. Start directly with:
+#    "SEBI has amended..."
+
+# 9. DO NOT generate headings or section titles such as:
+#    - SEBI Newsletter Summary
+#    - Amendment Announcement
+#    - Additional Information
+#    - Compliance Implication
+
+# 10. Use plain professional bullet formatting only.
+
+# 11. Maximum 10 bullets.
+
+# 12. Output should read like:
+#     - legal newsletter
+#     - compliance update
+#     - regulatory digest
+
+# NOT like:
+#     - legal interpretation
+#     - clause extraction
+#     - explanatory note
+#     - regulation summary
+
+# 13. End with ONE concise operational action point
+# only if there is a clear compliance obligation.
+
+# 14. Avoid vague generic language such as:
+#    - "entities are advised"
+#    - "please note"
+#    - "stay updated"
+#    - "it is important to"
+
+# 15. Keep bullets crisp, specific, and regulatory-focused.
+
+# 16. Ensure all MATERIAL amendment categories are covered where present, including:
+#    - inserted provisions
+#    - omitted provisions
+#    - substituted provisions
+#    - reduced or expanded timelines
+#    - reporting obligations
+#    - disqualification criteria changes
+#    - governance or compliance changes
+#    - definitional changes
+
+# 17. Do not over-compress multiple distinct amendments into one generic paragraph.
+
+# ISSUE DATE:
+# {issue_date}
+
+# EFFECTIVE DATE:
+# {effective_date}
+
+# AMENDMENT CONTEXTS:
+# {all_amendments}
+
+# FINAL NEWSLETTER SUMMARY:
+# """
+# )
 # ============================================================
 # GENERATE AMENDMENT SUMMARIES
 # ============================================================
 
 # def generate_amendment_summaries(amended_pdf_text: str,issue_date: str):
-def generate_amendment_summaries(amended_pdf_text: str,issue_date: str,effective_date: str):
+# def generate_amendment_summaries(amended_pdf_text: str,issue_date: str,effective_date: str):
+#     footer_blocks = extract_footer_blocks(
+#         amended_pdf_text,
+#         issue_date
+#     )
+
+#     summaries = []
+
+#     for block in footer_blocks:
+
+#         try:
+
+#             ref_no = extract_reference_number(
+#                 block
+#             )
+
+#             if not ref_no:
+#                 continue
+
+#             main_clause = extract_main_clause(
+#                 amended_pdf_text,
+#                 ref_no
+#             )
+
+#             if not main_clause:
+#                 continue
+
+#             chain = AMENDMENT_PROMPT | llm
+
+#             # result = chain.invoke({
+
+#             #     "main_clause": main_clause[:4000],
+#             #     "footer_block": block[:2000]
+#             # })
+#             result = chain.invoke({
+
+#                 "main_clause": main_clause[:4000],
+#                 "footer_block": block[:2000],
+#                 "issue_date": issue_date,
+#                 "effective_date": effective_date,
+#             })
+#             summaries.append(
+#                 str(result).strip()
+#             )
+
+#         except Exception as e:
+
+#             logging.error(
+#                 f"Amendment summary failed: {e}"
+#             )
+
+#     return "\n".join(summaries)
+
+# def generate_amendment_summaries(
+#     amended_pdf_text: str,
+#     issue_date: str,
+#     effective_date: str
+# ):
+
+#     footer_blocks = extract_footer_blocks(
+#         amended_pdf_text,
+#         issue_date
+#     )
+
+#     extracted_amendments = []
+
+#     for block in footer_blocks:
+
+#         try:
+
+#             ref_no = extract_reference_number(
+#                 block
+#             )
+
+#             if not ref_no:
+#                 continue
+
+#             main_clause = extract_main_clause(
+#                 amended_pdf_text,
+#                 ref_no
+#             )
+
+#             if not main_clause:
+#                 continue
+
+#             extracted_amendments.append(
+
+#                 f"""
+# REFERENCE NUMBER:
+# {ref_no}
+
+# CURRENT CLAUSE:
+# {main_clause[:2500]}
+
+# FOOTER NOTE:
+# {block[:1200]}
+# """
+#             )
+
+#         except Exception as e:
+
+#             logging.error(
+#                 f"Amendment extraction failed: {e}"
+#             )
+
+#     if not extracted_amendments:
+
+#         return ""
+
+#     combined_context = "\n\n".join(
+#         extracted_amendments
+#     )
+
+#     final_chain = FINAL_NEWSLETTER_PROMPT | llm
+
+#     result = final_chain.invoke({
+
+#         "issue_date": issue_date,
+#         "effective_date": effective_date,
+#         "all_amendments": combined_context[:18000]
+#     })
+
+#     return str(result).strip()
+
+def generate_amendment_summaries(
+    amended_pdf_text: str,
+    issue_date: str,
+    effective_date: str
+):
+
     footer_blocks = extract_footer_blocks(
         amended_pdf_text,
         issue_date
     )
 
-    summaries = []
+    extracted_amendments = []
 
     for block in footer_blocks:
 
@@ -686,32 +989,53 @@ def generate_amendment_summaries(amended_pdf_text: str,issue_date: str,effective
             if not main_clause:
                 continue
 
+            # ====================================================
+            # STEP 1:
+            # GENERATE MINI AMENDMENT-LEVEL SUMMARY
+            # ====================================================
+
             chain = AMENDMENT_PROMPT | llm
 
-            # result = chain.invoke({
-
-            #     "main_clause": main_clause[:4000],
-            #     "footer_block": block[:2000]
-            # })
-            result = chain.invoke({
+            mini_summary = chain.invoke({
 
                 "main_clause": main_clause[:4000],
                 "footer_block": block[:2000],
                 "issue_date": issue_date,
                 "effective_date": effective_date,
             })
-            summaries.append(
-                str(result).strip()
+
+            extracted_amendments.append(
+                str(mini_summary).strip()
             )
 
         except Exception as e:
 
             logging.error(
-                f"Amendment summary failed: {e}"
+                f"Amendment extraction failed: {e}"
             )
 
-    return "\n".join(summaries)
+    if not extracted_amendments:
+        return ""
 
+    # ========================================================
+    # STEP 2:
+    # CONSOLIDATE ALL MINI SUMMARIES
+    # ========================================================
+
+    combined_context = "\n\n".join(
+        extracted_amendments
+    )
+
+    final_chain = FINAL_NEWSLETTER_PROMPT | llm
+
+    result = final_chain.invoke({
+
+        "issue_date": issue_date,
+        "effective_date": effective_date,
+        "all_amendments": combined_context[:18000]
+    })
+
+    return str(result).strip()
 # ============================================================
 # FORMAT THE FINAL NEWSLETTER SUMMARY BLOCK
 #
