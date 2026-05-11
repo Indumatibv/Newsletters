@@ -491,9 +491,10 @@ def extract_footer_blocks(
 # ============================================================
 
 def extract_reference_number(block: str):
-
     match = re.search(
-        r'(\d+)\s+(substituted|inserted|omitted)',
+        r'([0-9A-Za-z]+)\s+(substituted|inserted|omitted)',
+    # match = re.search(
+    #     r'(\d+)\s+(substituted|inserted|omitted)',
         block,
         re.IGNORECASE
     )
@@ -516,11 +517,12 @@ def extract_main_clause(
     lines = text.splitlines()
 
     # pattern = re.compile(
-    #     rf'\b{reference_number}\b',
+    #     rf'{reference_number}\[',
     #     re.IGNORECASE
     # )
+
     pattern = re.compile(
-        rf'{reference_number}\[',
+        rf'{re.escape(reference_number)}\s*\[',
         re.IGNORECASE
     )
     for idx, line in enumerate(lines):
@@ -970,6 +972,11 @@ def generate_amendment_summaries(
 
     extracted_amendments = []
 
+    debug_footer_blocks = []
+    debug_main_clauses = []
+    debug_prior_provisions = []
+    debug_mini_summaries = []
+
     for block in footer_blocks:
 
         try:
@@ -981,6 +988,8 @@ def generate_amendment_summaries(
             if not ref_no:
                 continue
 
+            debug_footer_blocks.append(block)
+
             main_clause = extract_main_clause(
                 amended_pdf_text,
                 ref_no
@@ -988,7 +997,21 @@ def generate_amendment_summaries(
 
             if not main_clause:
                 continue
+            debug_main_clauses.append(main_clause)
 
+            prior_match = re.search(
+                r'Prior to (?:omission|substitution).*?:\s*(.*)',
+                block,
+                re.IGNORECASE | re.DOTALL
+            )
+
+            prior_text = ""
+
+            if prior_match:
+
+                prior_text = prior_match.group(1).strip()
+
+            debug_prior_provisions.append(prior_text)
             # ====================================================
             # STEP 1:
             # GENERATE MINI AMENDMENT-LEVEL SUMMARY
@@ -1003,7 +1026,10 @@ def generate_amendment_summaries(
                 "issue_date": issue_date,
                 "effective_date": effective_date,
             })
-
+            
+            debug_mini_summaries.append(
+                str(mini_summary).strip()
+            )
             extracted_amendments.append(
                 str(mini_summary).strip()
             )
@@ -1015,8 +1041,19 @@ def generate_amendment_summaries(
             )
 
     if not extracted_amendments:
-        return ""
+        # return ""
+        return {
 
+            "final_summary": "",
+
+            "footer_blocks": "",
+
+            "main_clauses": "",
+
+            "prior_provisions": "",
+
+            "mini_summaries": ""
+        }
     # ========================================================
     # STEP 2:
     # CONSOLIDATE ALL MINI SUMMARIES
@@ -1035,7 +1072,28 @@ def generate_amendment_summaries(
         "all_amendments": combined_context[:18000]
     })
 
-    return str(result).strip()
+    # return str(result).strip()
+
+    return {
+
+        "final_summary": str(result).strip(),
+
+        "footer_blocks": "\n\n====================\n\n".join(
+            debug_footer_blocks
+        ),
+
+        "main_clauses": "\n\n====================\n\n".join(
+            debug_main_clauses
+        ),
+
+        "prior_provisions": "\n\n====================\n\n".join(
+            debug_prior_provisions
+        ),
+
+        "mini_summaries": "\n\n====================\n\n".join(
+            debug_mini_summaries
+        )
+    }
 # ============================================================
 # FORMAT THE FINAL NEWSLETTER SUMMARY BLOCK
 #
@@ -1195,13 +1253,26 @@ def process_newsletter_row(row: pd.Series,df_sebi: pd.DataFrame) -> pd.Series | 
 
             # amendment_summary = generate_amendment_summaries(
             #     amended_text,
-            #     issue_date
+            #     issue_date,
+            #     effective_date
             # )
-            amendment_summary = generate_amendment_summaries(
+
+            amendment_result = generate_amendment_summaries(
                 amended_text,
                 issue_date,
                 effective_date
             )
+
+            amendment_summary = amendment_result["final_summary"]
+
+            row["FooterBlocks"] = amendment_result["footer_blocks"]
+
+            row["MappedClauses"] = amendment_result["main_clauses"]
+
+            row["PriorProvisions"] = amendment_result["prior_provisions"]
+
+            row["MiniAmendmentSummaries"] = amendment_result["mini_summaries"]
+            
             logging.info(
                 f"Generated amendment summaries "
                 f"from {amended_pdf_path.name}"
@@ -1246,6 +1317,19 @@ def main(excel_file: str):
     # Add EffectiveDate column if missing
     if "EffectiveDate" not in df.columns:
         df["EffectiveDate"] = ""
+    extra_cols = [
+
+        "FooterBlocks",
+        "MappedClauses",
+        "PriorProvisions",
+        "MiniAmendmentSummaries"
+    ]
+
+    for col in extra_cols:
+
+        if col not in df.columns:
+
+            df[col] = ""
 
     logging.info(f"Total rows in input: {len(df)}")
 
