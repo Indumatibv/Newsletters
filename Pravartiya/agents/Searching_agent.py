@@ -32,11 +32,12 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import json
-
+import tempfile
 import unicodedata
 
 import hashlib
-
+import glob
+import shutil
 import requests
  
 from selenium.common.exceptions import NoSuchWindowException, WebDriverException
@@ -262,21 +263,61 @@ def is_ignored_sebi_title(title: str) -> bool:
     if not title:
         return False
 
-    # Case-insensitive keywords
+    # # Case-insensitive keywords
+    # ignore_keywords_ci = [
+    #     "mutual fund",
+    #     "mutual funds",
+    #     "alternative investment fund",
+    #     "alternative investment funds",
+    #     "aif",
+    #     "niveshak shivir",
+    #     "inauguration",
+    #     "survey",
+    #     "municipal bond",
+    #     "contest",
+    #     "campaign",
+    #     "annual report",
+    #     "newspaper advertisement",
+    # ]
+
     ignore_keywords_ci = [
         "mutual fund",
         "mutual funds",
+
         "alternative investment fund",
         "alternative investment funds",
         "aif",
+
+        "kra",
+        "kras",
+
+        "invit",
+        "infrastructure investment trust",
+
         "niveshak shivir",
         "inauguration",
         "survey",
+
         "municipal bond",
+        "minicipal bond",
+
         "contest",
         "campaign",
+
         "annual report",
         "newspaper advertisement",
+
+        "intermediaries",
+        "research analyst",
+        "stock broker",
+        "stock brocker",
+
+        "portfolio investor",
+        "portfolio investors",
+
+        "real estate investment trust",
+
+        "collective investment scheme",
     ]
 
     title_lower = title.lower()
@@ -525,11 +566,12 @@ async def scrape_nse(task, week_start, week_end):
         logging.error("No rows found on NSE page")
         return
 
-    top_10 = rows[:10]
-    logging.info("Processing top 10 NSE circulars")
+    # top_10 = rows[:10]
+    # logging.info("Processing top 10 NSE circulars")
 
     # -------- LOOP --------
-    for row in top_10:
+    # for row in top_10:
+    for row in rows:
         cols = row.find_all("td")
         if len(cols) < 2:
             continue
@@ -606,9 +648,136 @@ async def scrape_nse(task, week_start, week_end):
 
     logging.info("NSE LISTED COMPANIES -> DONE")
 
+# BSE_DOWNLOADS_DIR = os.path.expanduser("~/Downloads")
+def get_latest_bse_pdf(download_dir, existing, wait_seconds=15) -> str | None:
+# def get_latest_bse_pdf(existing, wait_seconds=15) -> str | None:
+    end_time = time.time() + wait_seconds
+
+    while time.time() < end_time:
+        # current = set(glob.glob(os.path.join(run_download_dir, "*.pdf")))
+        current = set(glob.glob(os.path.join(download_dir, "*.pdf")))
+        new_files = current - existing
+
+        for f in new_files:
+            if not f.endswith(".crdownload"):
+                return f
+
+        time.sleep(1)
+
+    return None
+
+def bse_get_pdf_url_from_detail_page(detail_url: str, driver) -> str | None:
+    """
+    Navigate to BSE detail page, use CDP to intercept the PDF network
+    request triggered by clicking button.btnbr.
+    """
+    listing_url = driver.current_url
+    captured_pdf_url = []
+
+    try:
+        # Enable CDP Network and listen for requests
+        driver.execute_cdp_cmd("Network.enable", {})
+
+        # Set up a JS-side interceptor using fetch/XHR monkey-patch BEFORE page loads
+        driver.get(detail_url)
+        time.sleep(5)
+
+        # Inject JS to intercept window.open calls
+        driver.execute_script("""
+            window._bse_pdf_url = null;
+            const _orig_open = window.open;
+            window.open = function(url, ...args) {
+                window._bse_pdf_url = url;
+                return _orig_open.apply(this, arguments);
+            };
+            // Also intercept fetch
+            const _orig_fetch = window.fetch;
+            window.fetch = function(url, ...args) {
+                if (typeof url === 'string' && url.toLowerCase().includes('pdf')) {
+                    window._bse_pdf_url = url;
+                }
+                return _orig_fetch.apply(this, arguments);
+            };
+        """)
+
+        try:
+            pdf_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btnbr"))
+            )
+        except Exception:
+            logging.warning("BSE detail: button.btnbr not found: %s", detail_url)
+            return None
+
+        existing_handles = set(driver.window_handles)
+
+        # Click
+        driver.execute_script("arguments[0].click();", pdf_button)
+        time.sleep(4)
+
+        # --- Strategy 1: check our window.open interceptor ---
+        intercepted = driver.execute_script("return window._bse_pdf_url;")
+        if intercepted:
+            logging.info("BSE detail: intercepted window.open URL: %s", intercepted)
+            if not intercepted.startswith("http"):
+                intercepted = urljoin("https://www.bseindia.com", intercepted)
+            return intercepted
+
+        # --- Strategy 2: new tab opened ---
+        new_handles = set(driver.window_handles) - existing_handles
+        if new_handles:
+            pdf_tab = new_handles.pop()
+            driver.switch_to.window(pdf_tab)
+            time.sleep(2)
+            tab_url = driver.current_url
+            logging.info("BSE detail: new tab URL: %s", tab_url)
+            driver.close()
+            driver.switch_to.window(list(existing_handles)[0])
+            if tab_url and tab_url not in ("about:blank", detail_url):
+                return tab_url
+
+        # --- Strategy 3: check CDP network log for PDF requests ---
+        try:
+            logs = driver.execute_script("""
+                return window.performance.getEntriesByType('resource')
+                    .map(e => e.name);
+            """)
+            logging.info("BSE detail: all resource URLs: %s", logs[:10])
+            for u in logs:
+                if any(x in u.lower() for x in [".pdf", "getfile", "download", "circular"]):
+                    logging.info("BSE detail: PDF from resource: %s", u)
+                    return u
+        except Exception as e:
+            logging.warning("BSE: resource log failed: %s", e)
+
+        # --- Strategy 4: check page source for any downloadable link ---
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        for tag in soup.select("embed, iframe, object"):
+            src = tag.get("src", "") or tag.get("data", "")
+            if src:
+                return urljoin("https://www.bseindia.com", src)
+
+        logging.warning("BSE detail: all strategies failed: %s", detail_url)
+        return None
+
+    except Exception as e:
+        logging.warning("BSE detail page extraction failed: %s | %s", detail_url, e)
+        return None
+
+    finally:
+        try:
+            driver.execute_cdp_cmd("Network.disable", {})
+        except Exception:
+            pass
+        try:
+            if driver.current_url != listing_url:
+                driver.get(listing_url)
+                time.sleep(5)
+        except Exception:
+            pass
 
 async def scrape_bse(task, week_start, week_end):
     logging.info("BSE SCRAPER (Angular) -> %s", task["url"])
+    run_download_dir = tempfile.mkdtemp(prefix="bse_dl_")
 
     MAX_RETRIES = 3
     driver = None
@@ -621,7 +790,25 @@ async def scrape_bse(task, week_start, week_end):
                 opts = uc.ChromeOptions()
                 opts.add_argument("--no-sandbox")
                 opts.add_argument("--disable-dev-shm-usage")
-                driver = uc.Chrome(options=opts, version_main=147)
+                # driver = uc.Chrome(options=opts, version_main=147)
+                prefs = {
+                    "download.default_directory": run_download_dir,
+                    "download.prompt_for_download": False,
+                    "plugins.always_open_pdf_externally": True,
+                    "download.directory_upgrade": True,
+                }
+
+                opts.add_experimental_option("prefs", prefs)
+
+                driver = uc.Chrome(options=opts, version_main=148)
+            # else:
+            #     opts = webdriver.ChromeOptions()
+            #     opts.add_argument("--no-sandbox")
+            #     opts.add_argument("--disable-dev-shm-usage")
+            #     opts.add_argument("--disable-blink-features=AutomationControlled")
+            #     opts.add_experimental_option("excludeSwitches", ["enable-automation"])
+            #     opts.add_experimental_option("useAutomationExtension", False)
+            #     driver = webdriver.Chrome(options=opts)
             else:
                 opts = webdriver.ChromeOptions()
                 opts.add_argument("--no-sandbox")
@@ -629,6 +816,16 @@ async def scrape_bse(task, week_start, week_end):
                 opts.add_argument("--disable-blink-features=AutomationControlled")
                 opts.add_experimental_option("excludeSwitches", ["enable-automation"])
                 opts.add_experimental_option("useAutomationExtension", False)
+
+                prefs = {
+                    "download.default_directory": run_download_dir,
+                    "download.prompt_for_download": False,
+                    "plugins.always_open_pdf_externally": True,
+                    "download.directory_upgrade": True,
+                }
+
+                opts.add_experimental_option("prefs", prefs)
+
                 driver = webdriver.Chrome(options=opts)
 
             time.sleep(2)  # let uc stabilise before touching the window
@@ -690,9 +887,20 @@ async def scrape_bse(task, week_start, week_end):
                     if not a:
                         continue
 
+                    # title = a.get_text(strip=True)
+                    # pdf_url = a["href"]
                     title = a.get_text(strip=True)
                     pdf_url = a["href"]
 
+                    if pdf_url.startswith("/"):
+                        pdf_url = urljoin("https://www.bseindia.com", pdf_url)
+
+                    actual_pdf_url = pdf_url
+
+                    is_detail_page = (
+                        "DispNewNoticesCirculars?page=" in pdf_url
+                        or not pdf_url.lower().endswith(".pdf")
+                    )
                     date_text = cols[1].get_text(strip=True)
                     try:
                         dt = datetime.strptime(date_text.strip(), "%B %d, %Y")
@@ -703,7 +911,29 @@ async def scrape_bse(task, week_start, week_end):
                     if not (week_start <= dt <= week_end):
                         logging.info("BSE skipping outside week: %s | %s", dt.date(), title[:60])
                         continue
+                    if is_detail_page:
+                        logging.info("BSE detail page detected: %s", pdf_url)
 
+                        existing_downloads = set(
+                            glob.glob(os.path.join(run_download_dir, "*.pdf"))
+                        )
+
+                        actual_pdf_url = bse_get_pdf_url_from_detail_page(
+                            pdf_url,
+                            driver
+                        )
+
+                        logging.info(
+                            "BSE detail: resolved URL = %r",
+                            actual_pdf_url
+                        )
+
+                        if not actual_pdf_url:
+                            logging.warning(
+                                "BSE: could not extract PDF from detail page: %s",
+                                pdf_url
+                            )
+                            continue
                     normalized_title = normalize_title_for_compare(title)
                     if normalized_title in BSE_TITLES_NORMALIZED:
                         logging.info("BSE duplicate skipped: %s", title)
@@ -720,10 +950,93 @@ async def scrape_bse(task, week_start, week_end):
                         month_full
                     )
 
-                    downloaded_path = await download_pdf(
-                        session, pdf_url, save_dir, title
-                    )
+                    # downloaded_path = await download_pdf(
+                    #     session, pdf_url, save_dir, title
+                    # )
+                    if is_detail_page:
 
+                        # latest_pdf = get_latest_bse_pdf(
+                        #     existing_downloads,
+                        #     wait_seconds=15
+                        # )
+
+                        # if not latest_pdf:
+                        #     logging.error(
+                        #         "BSE: browser download not found for: %s",
+                        #         title
+                        #     )
+                        #     continue
+
+                        # filename = safe_pdf_filename(
+                        #     title,
+                        #     actual_pdf_url
+                        # )
+
+                        # final_path = os.path.join(save_dir, filename)
+
+                        # shutil.move(latest_pdf, final_path)
+
+                        # downloaded_path = final_path
+
+                        # latest_pdf = get_latest_bse_pdf(
+                        #     existing_downloads,
+                        #     wait_seconds=15
+                        # )
+                        latest_pdf = get_latest_bse_pdf(
+                            run_download_dir,
+                            existing_downloads,
+                            wait_seconds=15
+                        )
+                        if not latest_pdf:
+                            logging.error(
+                                "BSE: browser download not found for: %s",
+                                title
+                            )
+                            continue
+
+                        downloaded_filename = os.path.basename(latest_pdf)
+
+                        filename = safe_pdf_filename(
+                            title,
+                            actual_pdf_url
+                        )
+
+                        final_path = os.path.join(save_dir, filename)
+
+                        shutil.move(latest_pdf, final_path)
+                        downloaded_filename = os.path.basename(latest_pdf)
+
+                        # if (
+                        #     not actual_pdf_url
+                        #     or "DispNewNoticesCirculars" in actual_pdf_url
+                        #     or not actual_pdf_url.lower().endswith(".pdf")
+                        # ):
+                        #     actual_pdf_url = (
+                        #         "https://www.bseindia.com/downloads/UploadDocs/Notices/"
+                        #         + downloaded_filename
+                        #     )
+
+                        if (
+                            not actual_pdf_url
+                            or "DispNewNoticesCirculars" in actual_pdf_url
+                            or not actual_pdf_url.lower().endswith(".pdf")
+                        ):
+                            actual_pdf_url = pdf_url
+                        
+                        downloaded_path = final_path
+                        logging.info(
+                            "BSE: moved browser download -> %s",
+                            final_path
+                        )
+
+                    else:
+
+                        downloaded_path = await download_pdf(
+                            session,
+                            actual_pdf_url,
+                            save_dir,
+                            title
+                        )
                     if not downloaded_path:
                         logging.error("BSE PDF failed: %s", pdf_url)
                         continue
@@ -737,7 +1050,8 @@ async def scrape_bse(task, week_start, week_end):
                         "Month": month_full,
                         "IssueDate": dt.strftime("%Y-%m-%d"),
                         "Title": title,
-                        "PDF_URL": pdf_url,
+                        # "PDF_URL": pdf_url,
+                        "PDF_URL": actual_pdf_url,
                         "File Name": filename,
                         "Path": os.path.abspath(downloaded_path)
                     })
@@ -764,7 +1078,10 @@ async def scrape_bse(task, week_start, week_end):
                 except Exception:
                     pass
                 driver = None
-
+            try:
+                shutil.rmtree(run_download_dir, ignore_errors=True)
+            except Exception:
+                pass
     logging.info("BSE SCRAPER -> DONE")
 
 async def scrape_sebi_informal_guidance(task, week_start, week_end):
@@ -1090,11 +1407,11 @@ async def main():
     #   TARGET_YEAR, TARGET_MONTH = 2025, 3      ← March 2025
     #   TARGET_YEAR, TARGET_MONTH = 2024, 12     ← December 2024
     # ──────────────────────────────────────────────────────────────────
-    TARGET_YEAR  = None
-    TARGET_MONTH = None
+    # TARGET_YEAR  = None
+    # TARGET_MONTH = None
 
-    # TARGET_YEAR  = 2026
-    # TARGET_MONTH = 5
+    TARGET_YEAR  = 2026
+    TARGET_MONTH = 1
     month_start, month_end = get_month_range(TARGET_YEAR, TARGET_MONTH)
 
     tasks = load_link_tasks_from_excel()
