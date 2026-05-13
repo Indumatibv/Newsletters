@@ -353,13 +353,18 @@ def normalize_regulation_title(title: str) -> str:
     if not isinstance(title, str):
         return ""
 
+    # title = re.sub(
+    #     r'\[last\s+amended\s+on.*?\]',
+    #     '',
+    #     title,
+    #     flags=re.IGNORECASE
+    # )
     title = re.sub(
-        r'\[last\s+amended\s+on.*?\]',
+        r'\[(last\s+amended\s+on|amended\s+as\s+on).*?\]',
         '',
         title,
         flags=re.IGNORECASE
     )
-
     title = re.sub(
         r'\(amendment\)',
         '',
@@ -368,7 +373,7 @@ def normalize_regulation_title(title: str) -> str:
     )
 
     title = re.sub(
-        r'regulations,\s*\d{4}',
+        r'regulations[,]?\s*\d{4}',
         'regulations',
         title,
         flags=re.IGNORECASE
@@ -392,11 +397,19 @@ def find_last_amended_pdf(
         amendment_title
     )
 
+    # amended_rows = df[
+    #     df["Title"].str.contains(
+    #         "last amended on",
+    #         case=False,
+    #         na=False
+    #     )
+    # ]
     amended_rows = df[
         df["Title"].str.contains(
-            "last amended on",
+            r'last\s+amended\s+on|amended\s+as\s+on',
             case=False,
-            na=False
+            na=False,
+            regex=True
         )
     ]
 
@@ -440,52 +453,100 @@ def build_issue_date_patterns(issue_date: str):
         return []
 
 
+# def extract_footer_blocks(
+#     text: str,
+#     issue_date: str
+# ):
+
+#     patterns = build_issue_date_patterns(
+#         issue_date
+#     )
+
+#     lines = text.splitlines()
+
+#     footer_blocks = []
+
+#     for idx, line in enumerate(lines):
+
+#         nearby = "\n".join(
+#             lines[
+#                 max(0, idx-3):
+#                 min(len(lines), idx+5)
+#             ]
+#         )
+
+#         nearby_lower = nearby.lower()
+
+#         has_date = any(
+#             p in nearby
+#             for p in patterns
+#         )
+
+#         has_action = FOOTER_ACTION_PATTERN.search(
+#             nearby_lower
+#         )
+
+#         if not has_date:
+#             continue
+
+#         if not has_action:
+#             continue
+
+#         footer_blocks.append(
+#             nearby
+#         )
+#     footer_blocks = list(set(footer_blocks))
+#     return footer_blocks
+
 def extract_footer_blocks(
     text: str,
     issue_date: str
 ):
 
-    patterns = build_issue_date_patterns(
-        issue_date
-    )
-
     lines = text.splitlines()
 
     footer_blocks = []
 
+    footer_pattern = re.compile(
+        r'(\d+[A-Za-z]*)\s+'
+        r'(Inserted|Substituted|Omitted|Numbered)\b',
+        re.IGNORECASE
+    )
+
     for idx, line in enumerate(lines):
 
-        nearby = "\n".join(
-            lines[
-                max(0, idx-3):
-                min(len(lines), idx+5)
-            ]
-        )
+        clean = line.strip()
 
-        nearby_lower = nearby.lower()
-
-        has_date = any(
-            p in nearby
-            for p in patterns
-        )
-
-        has_action = FOOTER_ACTION_PATTERN.search(
-            nearby_lower
-        )
-
-        if not has_date:
+        if not clean:
             continue
 
-        if not has_action:
-            continue
+        if footer_pattern.search(clean):
 
-        footer_blocks.append(
-            nearby
-        )
-    footer_blocks = list(set(footer_blocks))
-    return footer_blocks
+            block_lines = [clean]
 
+            # capture continuation lines
+            for j in range(idx + 1, min(idx + 8, len(lines))):
 
+                nxt = lines[j].strip()
+
+                if not nxt:
+                    break
+
+                # stop if next footer starts
+                if footer_pattern.search(nxt):
+                    break
+
+                # stop if main regulation body restarts
+                if re.match(r'^\(?[a-zA-Z0-9]+\)', nxt):
+                    break
+
+                block_lines.append(nxt)
+
+            footer_blocks.append(
+                "\n".join(block_lines)
+            )
+
+    return list(set(footer_blocks))
 # ============================================================
 # REFERENCE NUMBER EXTRACTION
 # ============================================================
@@ -509,6 +570,37 @@ def extract_reference_number(block: str):
 # MAIN CLAUSE EXTRACTION
 # ============================================================
 
+# def extract_main_clause(
+#     text: str,
+#     reference_number: str
+# ):
+
+#     lines = text.splitlines()
+
+#     # pattern = re.compile(
+#     #     rf'{reference_number}\[',
+#     #     re.IGNORECASE
+#     # )
+
+#     pattern = re.compile(
+#         rf'{re.escape(reference_number)}\s*\[',
+#         re.IGNORECASE
+#     )
+#     for idx, line in enumerate(lines):
+
+#         if pattern.search(line):
+
+#             context = "\n".join(
+#                 lines[
+#                     max(0, idx-2):
+#                     min(len(lines), idx+20)
+#                 ]
+#             )
+
+#             return context
+
+#     return ""
+
 def extract_main_clause(
     text: str,
     reference_number: str
@@ -516,31 +608,40 @@ def extract_main_clause(
 
     lines = text.splitlines()
 
-    # pattern = re.compile(
-    #     rf'{reference_number}\[',
-    #     re.IGNORECASE
-    # )
+    patterns = [
 
-    pattern = re.compile(
-        rf'{re.escape(reference_number)}\s*\[',
-        re.IGNORECASE
-    )
+        re.compile(
+            rf'\b{re.escape(reference_number)}\s*\[',
+            re.IGNORECASE
+        ),
+
+        re.compile(
+            rf'footnote\s*{re.escape(reference_number)}',
+            re.IGNORECASE
+        ),
+
+        re.compile(
+            rf'\b{re.escape(reference_number)}\b',
+            re.IGNORECASE
+        ),
+    ]
+
     for idx, line in enumerate(lines):
 
-        if pattern.search(line):
+        for pattern in patterns:
 
-            context = "\n".join(
-                lines[
-                    max(0, idx-2):
-                    min(len(lines), idx+20)
-                ]
-            )
+            if pattern.search(line):
 
-            return context
+                context = "\n".join(
+                    lines[
+                        max(0, idx-3):
+                        min(len(lines), idx+25)
+                    ]
+                )
+
+                return context
 
     return ""
-
-
 # ============================================================
 # AMENDMENT SUMMARY PROMPT
 # ============================================================
@@ -1000,7 +1101,8 @@ def generate_amendment_summaries(
             debug_main_clauses.append(main_clause)
 
             prior_match = re.search(
-                r'Prior to (?:omission|substitution).*?:\s*(.*)',
+                # r'Prior to (?:omission|substitution).*?:\s*(.*)',
+                r'Prior to (?:omission|substitution).*?(?:read as under|read as follows)?\s*[:-]\s*(.*)',
                 block,
                 re.IGNORECASE | re.DOTALL
             )
