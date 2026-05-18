@@ -18,7 +18,7 @@ if sys.platform.startswith("win"):
 
 import logging
 from urllib.parse import urljoin, parse_qs, unquote, urlparse
-from crawl4ai import AsyncWebCrawler
+# from crawl4ai import AsyncWebCrawler
 from bs4 import BeautifulSoup
 import aiohttp
 import base64
@@ -39,7 +39,9 @@ import hashlib
 import glob
 import shutil
 import requests
- 
+
+from crawl4ai import ( AsyncWebCrawler, BrowserConfig )
+
 from selenium.common.exceptions import NoSuchWindowException, WebDriverException
 
 try:
@@ -59,7 +61,19 @@ logging.basicConfig(
 BSE_TITLES_NORMALIZED = set()
 
 #----mca-----
- 
+
+
+BROWSER_CONFIG = BrowserConfig(
+    headless=True,
+    verbose=False,
+    extra_args=[
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--single-process",
+    ]
+)
 
 # ── Constants ──────────────────────────────────────────────
  
@@ -555,7 +569,8 @@ async def scrape_nse(task, week_start, week_end):
     logging.info("NSE LISTED COMPANIES SCRAPER -> %s", task["url"])
 
     # 1) Crawl page using Crawl4AI
-    async with AsyncWebCrawler() as crawler:
+    async with AsyncWebCrawler(config=BROWSER_CONFIG) as crawler:
+    # async with AsyncWebCrawler() as crawler:
         result = await crawler.arun(url=task["url"])
 
     soup = BeautifulSoup(result.html, "html.parser")
@@ -1087,7 +1102,8 @@ async def scrape_bse(task, week_start, week_end):
 async def scrape_sebi_informal_guidance(task, week_start, week_end):
     logging.info("SEBI INFORMAL GUIDANCE SCRAPER -> %s", task["url"])
 
-    async with AsyncWebCrawler() as crawler:
+    async with AsyncWebCrawler(config=BROWSER_CONFIG) as crawler:
+    # async with AsyncWebCrawler() as crawler:
         result = await crawler.arun(url=task["url"])
     
     soup = BeautifulSoup(result.html, "html.parser")
@@ -1173,7 +1189,9 @@ async def scrape_sebi(task, week_start, week_end):
     logging.info("SEBI Scraper -> [%s > %s]: %s", category, subfolder, detail_url)
 
     # ---- Crawl page ----
-    async with AsyncWebCrawler() as crawler:
+    async with AsyncWebCrawler(config=BROWSER_CONFIG) as crawler:
+
+    # async with AsyncWebCrawler() as crawler:
         try:
             detail_result = await crawler.arun(url=detail_url)
         except Exception as e:
