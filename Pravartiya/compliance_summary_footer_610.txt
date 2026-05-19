@@ -1,0 +1,8 @@
+Gist of amendment:
+The requirement for a listed entity (HVDLE) to replace an independent director who resigns or is removed within three months has been removed.
+
+Existing provisions of Law prior to amendment:
+"An independent director who resigns or is removed from the board of directors of the HVDLE shall be replaced by a new independent director by the HVDLE not later than three months from the date of such vacancy: Provided that where the HVDLE fulfils the requirement of independent directors in its board of directors without filling the vacancy created by such resignation or removal, the requirement of replacement by a new independent director shall not apply."
+
+Action point for listed entity if any:
+Entities should update internal governance records, trackers, timelines, exemptions, or compliance references to remove references to the omitted provision.

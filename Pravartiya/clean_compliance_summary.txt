@@ -1,0 +1,11 @@
+The SEBI has issued an amendment to the regulations.
+
+Sub domain-Regulations
+
+Expected summary-
+- Date of circular: Not explicitly mentioned (No specific date is provided in Context A)
+- Effective date of circular: 22.1.2026 (Extracted from 'w.e.f.' date in Context A)
+- Gist of amendment: The word "regulation" has been substituted with the phrase "Chapter". Prior to this substitution, the regulation text read as follows: "regulations 16 to 81 of this regulation". (Based on Context A and Context B)
+- Existing provisions of Law prior to amendment: The existing provisions of law prior to this substitution were: "regulations 16 to 81 of this regulation" (Quoted verbatim from the 'Prior to its substitution...' section inside Context B)
+
+Action point for listed entity if any: Review statutory records and update references to align with the substituted wording.

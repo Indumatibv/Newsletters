@@ -1,0 +1,362 @@
+{
+  "amendment_reg_no": "SEBI/NRO-GN/2026/295",
+  "amendment_date": "20 January 2026",
+  "effective_date": "20 January 2026",
+  "issue_date_filter": "22.01.2026",
+  "footnotes_matched": 42,
+  "regulations_affected": [
+    "15",
+    "39",
+    "61A",
+    "62C",
+    "62D",
+    "62J",
+    "62L",
+    "62N",
+    "62Q"
+  ],
+  "retrieved_regulations": [
+    "62D",
+    "62J",
+    "62L"
+  ],
+  "summary": "---\nSub Domain: Regulations\n\nDate of Circular: 20 January 2026\nEffective Date: 20 January 2026\n\nGist of Amendment:\nThe SEBI has issued this circular to amend Regulation 15 of the Listing Obligations and Disclosure Requirements. The changes include replacing \"regulation\" with \"regulations\", omitting a specific number, changing \"chapter\" for \"Chapter\", and increasing the minimum non-convertible debt securities holding from One Thousand Crore to Five Thousand Crore.\n\nExisting Provisions Prior to Amendment:\nRegulation 15 specified various requirements related to the composition of board of directors, age limit for non-executive directors, and vigil mechanism/whistleblower policy for listed entities.\n\nSummary:\nThe SEBI has issued this circular and amended Regulation 15 of the Listing Obligations and Disclosure Requirements. The changes aim to clarify and strengthen certain provisions related to board composition, age limit for non-executive directors, and vigil mechanism/whistleblower policy for listed entities. Specifically, the amendments replace \"regulation\" with \"regulations\", omit a specific number, change \"chapter\" for \"Chapter\", and increase the minimum non-convertible debt securities holding from One Thousand Crore to Five Thousand Crore.\n\n---",
+  "all_dated_footnotes": [
+    {
+      "ref_num": "80",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the word “regulation” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "15"
+    },
+    {
+      "ref_num": "81",
+      "amendment_date": "22.01.2026",
+      "action": "omitted",
+      "full_note": "The word “regulation” omitted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "15"
+    },
+    {
+      "ref_num": "82",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the word “chapter” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "15"
+    },
+    {
+      "ref_num": "84",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the word “One” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "15"
+    },
+    {
+      "ref_num": "86",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the word “One” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "15"
+    },
+    {
+      "ref_num": "87",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the letter “a” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "15"
+    },
+    {
+      "ref_num": "88",
+      "amendment_date": "22.01.2026",
+      "action": "inserted",
+      "full_note": "Inserted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "15"
+    },
+    {
+      "ref_num": "91",
+      "amendment_date": "22.01.2026",
+      "action": "omitted",
+      "full_note": "Omitted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026. Prior to its omission, the Explanation (2) read as under: “Explanation (2) - The ‘high value debt listed entities’ on the date of notification of this amendment would be determined on basis of value of principal outstanding of listed debt securities as on March 31, 2021.”",
+      "prior_text": "“Explanation (2) - The ‘high value debt listed entities’ on the date of notification of this amendment would be determined on basis of value of principal outstanding of listed debt securities as on March 31, 2021.”",
+      "regulation_num": "15"
+    },
+    {
+      "ref_num": "95",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the words “the regulation” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "15"
+    },
+    {
+      "ref_num": "96",
+      "amendment_date": "22.01.2026",
+      "action": "inserted",
+      "full_note": "Inserted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "15"
+    },
+    {
+      "ref_num": "407",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted vide Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026. Prior to its substitution, the sub-regulation (2) read as under: “(2) The listed entity shall effect issuance of letter of confirmation or receipts or advices, as applicable, of subdivision, split, consolidation, renewal, exchanges, endorsements, issuance of duplicates thereof or letter of confirmation or receipts or advices, as applicable, in cases of loss or old decrepit or worn out certificates or receipts or advices, as applicable, in dematerialised form within a period of thirty days from the date of such lodgement.”",
+      "prior_text": "“(2) The listed entity shall effect issuance of letter of confirmation or receipts or advices, as applicable, of subdivision, split, consolidation, renewal, exchanges, endorsements, issuance of duplicates thereof or letter of confirmation or receipts or advices, as applicable, in cases of loss or old decrepit or worn out certificates or receipts or advices, as applicable, in dematerialised form within a period of thirty days from the date of such lodgement.”",
+      "regulation_num": "39"
+    },
+    {
+      "ref_num": "410",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted vide Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026. Prior to its substitution, the sub-regulation (1) read as under: “(1) Save as otherwise specified in provisions of securities laws or Companies Act, 2013 and rules made thereunder, the listed entity shall also comply with the requirements as specified in this regulation for effecting transfer of securities: Provided that requests for effecting transfer of securities shall not be processed unless the securities are held in the dematerialised form with a depository: Provided further that transmission or transposition of securities held in physical or dematerialised form shall be effected only in dematerialised form.”",
+      "prior_text": "“(1) Save as otherwise specified in provisions of securities laws or Companies Act, 2013 and rules made thereunder, the listed entity shall also comply with the requirements as specified in this regulation for effecting transfer of securities: Provided that requests for effecting transfer of securities shall not be processed unless the securities are held in the dematerialised form with a depository: Provided further that transmission or transposition of securities held in physical or dematerialised form shall be effected only in dematerialised form.”",
+      "regulation_num": "39"
+    },
+    {
+      "ref_num": "554",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted vide Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026. Prior to its substitution, the sub-regulation (3) read as under: “(3) Any amount transferred to the escrow account that remains unclaimed for seven years shall be transferred to the ‘Investor Education and Protection Fund’ constituted in terms of section 125 of the Companies Act, 2013: Provided that for listed entities which do not fall within the definition of “company” under the Companies Act, 2013 and the Rules made thereunder, any amount in the escrow account that remains unclaimed for seven years shall be transferred to the Investor Protection and Education Fund created by the Board in terms of section 11 of the Act: Provided further that the amount transferred to the Investor Protection and Education fund shall not bear any interest.”",
+      "prior_text": "“(3) Any amount transferred to the escrow account that remains unclaimed for seven years shall be transferred to the ‘Investor Education and Protection Fund’ constituted in terms of section 125 of the Companies Act, 2013: Provided that for listed entities which do not fall within the definition of “company” under the Companies Act, 2013 and the Rules made thereunder, any amount in the escrow account that remains unclaimed for seven years shall be transferred to the Investor Protection and Education Fund created by the Board in terms of section 11 of the Act: Provided further that the amount transferred to the Investor Protection and Education fund shall not bear any interest.”",
+      "regulation_num": "61A"
+    },
+    {
+      "ref_num": "567",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the word “One” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62C"
+    },
+    {
+      "ref_num": "568",
+      "amendment_date": "22.01.2026",
+      "action": "inserted",
+      "full_note": "Inserted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62C"
+    },
+    {
+      "ref_num": "569",
+      "amendment_date": "22.01.2026",
+      "action": "omitted",
+      "full_note": "The words, numbers and symbols “March 31, 2025, irrespective of” omitted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62C"
+    },
+    {
+      "ref_num": "570",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the word “One” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62C"
+    },
+    {
+      "ref_num": "571",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the words “corporate governance compliance report on and from” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62C"
+    },
+    {
+      "ref_num": "572",
+      "amendment_date": "22.01.2026",
+      "action": "inserted",
+      "full_note": "Inserted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62C"
+    },
+    {
+      "ref_num": "573",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the symbol “.” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62C"
+    },
+    {
+      "ref_num": "574",
+      "amendment_date": "22.01.2026",
+      "action": "inserted",
+      "full_note": "Inserted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62C"
+    },
+    {
+      "ref_num": "575",
+      "amendment_date": "22.01.2026",
+      "action": "unknown",
+      "full_note": "Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62D"
+    },
+    {
+      "ref_num": "576",
+      "amendment_date": "22.01.2026",
+      "action": "inserted",
+      "full_note": "Inserted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62D"
+    },
+    {
+      "ref_num": "581",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the words “listed entity” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62D"
+    },
+    {
+      "ref_num": "582",
+      "amendment_date": "22.01.2026",
+      "action": "inserted",
+      "full_note": "Inserted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62D"
+    },
+    {
+      "ref_num": "594",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026. Prior to its substitution, sub-regulation (1) read as under: “(1) The HVDLE shall formulate a policy on materiality of related party transactions and on dealing with related party transactions including clear threshold limits duly approved by the board of directors and such policy shall be reviewed by the board of directors at least once every three years and updated accordingly:  Provided that a transaction with a related party shall be considered material, if the transaction(s) to be entered into individually or taken together with previous transactions during a financial year, exceeds Rupees one thousand crore or ten per cent. of the annual consolidated turnover of the listed entity as per the last audited financial statements of the listed entity, whichever is lower.”",
+      "prior_text": "“(1) The HVDLE shall formulate a policy on materiality of related party transactions and on dealing with related party transactions including clear threshold limits duly approved by the board of directors and such policy shall be reviewed by the board of directors at least once every three years and updated accordingly:  Provided that a transaction with a related party shall be considered material, if the transaction(s) to be entered into individually or taken together with previous transactions during a financial year, exceeds Rupees one thousand crore or ten per cent. of the annual consolidated turnover of the listed entity as per the last audited financial statements of the listed entity, whichever is lower.”",
+      "regulation_num": "62J"
+    },
+    {
+      "ref_num": "595",
+      "amendment_date": "22.01.2026",
+      "action": "omitted",
+      "full_note": "Omitted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62J"
+    },
+    {
+      "ref_num": "598",
+      "amendment_date": "22.01.2026",
+      "action": "inserted",
+      "full_note": "Inserted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62J"
+    },
+    {
+      "ref_num": "599",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the words, symbols and numbers “sub-regulations (3), (4) and (5)” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62J"
+    },
+    {
+      "ref_num": "600",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the word “government” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62J"
+    },
+    {
+      "ref_num": "601",
+      "amendment_date": "22.01.2026",
+      "action": "omitted",
+      "full_note": "The word “and” omitted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62J"
+    },
+    {
+      "ref_num": "602",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the symbol “.” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62J"
+    },
+    {
+      "ref_num": "603",
+      "amendment_date": "22.01.2026",
+      "action": "inserted",
+      "full_note": "Inserted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62J"
+    },
+    {
+      "ref_num": "604",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026. Prior to its substitution, the explanation read as under: “Explanation: — For the purpose of clause (a) of this sub-regulation, \"government company\" means Government company as defined in sub-section (45) of section 2 of the Companies Act, 2013.”",
+      "prior_text": "as under: “Explanation: — For the purpose of clause (a) of this sub-regulation, \"government company\" means Government company as defined in sub-section (45) of section 2 of the Companies Act, 2013.”",
+      "regulation_num": "62L"
+    },
+    {
+      "ref_num": "605",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the word “income” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62L"
+    },
+    {
+      "ref_num": "607",
+      "amendment_date": "22.01.2026",
+      "action": "inserted",
+      "full_note": "Inserted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62N"
+    },
+    {
+      "ref_num": "608",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted for the words and symbols “and shall annex a secretarial audit report given by a company secretary in practice, in such form as specified by the Board, with the annual report of the listed entity” vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62N"
+    },
+    {
+      "ref_num": "609",
+      "amendment_date": "22.01.2026",
+      "action": "omitted",
+      "full_note": "Omitted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026. Prior to its omission, sub-regulation (2) read as under: “(2) “Every HVDLE shall submit a secretarial compliance report in such form as specified by the Board, to stock exchanges, within sixty days from end of each financial year.”",
+      "prior_text": "“(2) “Every HVDLE shall submit a secretarial compliance report in such form as specified by the Board, to stock exchanges, within sixty days from end of each financial year.”",
+      "regulation_num": "62N"
+    },
+    {
+      "ref_num": "610",
+      "amendment_date": "22.01.2026",
+      "action": "omitted",
+      "full_note": "Omitted vide vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026. Prior to its omission, sub-regulation (7) read as under: “(2) “An independent director who resigns or is removed from the board of directors of the HVDLE shall be replaced by a new independent director by the HVDLE not later than three months from the date of such vacancy: Provided that where the HVDLE fulfils the requirement of independent directors in its board of directors without filling the vacancy created by such resignation or removal, the requirement of replacement by a new independent director shall not apply.”",
+      "prior_text": "“(2) “An independent director who resigns or is removed from the board of directors of the HVDLE shall be replaced by a new independent director by the HVDLE not later than three months from the date of such vacancy: Provided that where the HVDLE fulfils the requirement of independent directors in its board of directors without filling the vacancy created by such resignation or removal, the requirement of replacement by a new independent director shall not apply.”",
+      "regulation_num": "62N"
+    },
+    {
+      "ref_num": "611",
+      "amendment_date": "22.01.2026",
+      "action": "inserted",
+      "full_note": "Inserted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026.",
+      "prior_text": "",
+      "regulation_num": "62Q"
+    },
+    {
+      "ref_num": "612",
+      "amendment_date": "22.01.2026",
+      "action": "substituted",
+      "full_note": "Substituted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026. Prior to its substitution, clause (a) read as under: “(a) The HVDLE shall submit a periodic compliance report on corporate governance in the format as specified by the Board from time to time to the recognized stock exchange(s) within twenty one days from the end of the period.”",
+      "prior_text": "“(a) The HVDLE shall submit a periodic compliance report on corporate governance in the format as specified by the Board from time to time to the recognized stock exchange(s) within twenty one days from the end of the period.”",
+      "regulation_num": "62Q"
+    },
+    {
+      "ref_num": "613",
+      "amendment_date": "22.01.2026",
+      "action": "omitted",
+      "full_note": "Omitted vide the Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) (Amendment) Regulations, 2026 w.e.f. 22.1.2026. Prior to its omission, clause (b) read as under: “(b) Details of all material transactions with related parties shall be disclosed along with the report mentioned in clause (a) of this sub-regulation.”",
+      "prior_text": "“(b) Details of all material transactions with related parties shall be disclosed along with the report mentioned in clause (a) of this sub-regulation.”",
+      "regulation_num": "62Q"
+    }
+  ]
+}
