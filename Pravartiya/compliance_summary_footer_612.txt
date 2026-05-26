@@ -1,5 +1,7 @@
-Gist of amendment: The submission of periodic compliance reports on corporate governance to recognized stock exchanges is now required to follow the format and timelines specified by the Board from time to time, as opposed to a specific twenty-one day deadline from the end of the period. (Substituted provision)
+Regulation Number: 62Q
 
-Existing provisions of Law prior to amendment: "The HVDLE shall submit a periodic compliance report on corporate governance in the format as specified by the Board from time to time to the recognized stock exchange(s) within twenty one days from the end of the period." (From CONTEXT A)
+Gist of amendment: The periodic compliance report on corporate governance submission timeline and format are now specified by the Board from time to time, as opposed to a specific twenty-one days from the end of the period.
 
-Action point for listed entity if any: Update internal governance records, trackers, timelines, and compliance references to reflect the new format and timeline requirements for periodic compliance reports on corporate governance.
+Existing provisions of Law prior to amendment: "The HVDLE shall submit a periodic compliance report on corporate governance in the format as specified by the Board from time to time to the recognized stock exchange(s) within twenty one days from the end of the period." (Not explicitly mentioned before the amendment)
+
+Action point for listed entity if any: Update internal governance records, trackers, timelines, and compliance references to reflect the new submission timeline and format for periodic compliance reports on corporate governance.

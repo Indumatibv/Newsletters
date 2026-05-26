@@ -8,9 +8,7 @@ import re
 
 
 # ============================================================
-# ISOLATE ONLY TARGET CLAUSE USING FOOTNOTE MARKER
-# Example:
-# 407[
+# STRICT INLINE FOOTNOTE CLAUSE EXTRACTION
 # ============================================================
 
 def extract_clause_with_footnote_marker(
@@ -23,7 +21,10 @@ def extract_clause_with_footnote_marker(
     if marker not in text:
         return text
 
-    # Find exact inline amendment fragment
+    # ========================================================
+    # Extract ONLY exact sentence containing footnote marker
+    # ========================================================
+
     pattern = rf'([^.]*?{re.escape(marker)}.*?[.])'
 
     match = re.search(
@@ -36,6 +37,30 @@ def extract_clause_with_footnote_marker(
         return match.group(1).strip()
 
     return text
+
+
+# ============================================================
+# DETECT AMENDMENT TYPE
+# ============================================================
+
+def detect_amendment_type(
+    footer_text
+):
+
+    footer_lower = footer_text.lower()
+
+    if "inserted" in footer_lower:
+        return "inserted"
+
+    elif "omitted" in footer_lower:
+        return "omitted"
+
+    elif "substituted" in footer_lower:
+        return "substituted"
+
+    return "unknown"
+
+
 # ============================================================
 # MAIN SUMMARY GENERATOR
 # ============================================================
@@ -100,6 +125,11 @@ def generate_factual_footer_summary(
     ).strip()
 
 
+    amendment_type = detect_amendment_type(
+        footer_text
+    )
+
+
     regulation_chunks = target_entry.get(
         "mapped_regulation_chunks",
         []
@@ -112,12 +142,25 @@ def generate_factual_footer_summary(
 
     extracted_clauses = []
 
+    mapped_regulation_numbers = []
+
+
     for chunk in regulation_chunks:
 
         chunk_text = chunk.get(
             "text",
             ""
         )
+
+        regulation_number = str(
+            chunk.get("section", "")
+        ).strip()
+
+        if regulation_number:
+
+            mapped_regulation_numbers.append(
+                regulation_number
+            )
 
         isolated_clause = (
             extract_clause_with_footnote_marker(
@@ -131,8 +174,31 @@ def generate_factual_footer_summary(
         )
 
 
+    # ========================================================
+    # UNIQUE REGULATION NUMBERS
+    # ========================================================
+
+    mapped_regulation_numbers = sorted(
+        list(
+            set(
+                mapped_regulation_numbers
+            )
+        )
+    )
+
+    regulation_numbers_text = ", ".join(
+        mapped_regulation_numbers
+    )
+
+
+    # ========================================================
+    # REMOVE DUPLICATES BUT PRESERVE ORDER
+    # ========================================================
+
     filtered_context = "\n\n".join(
-        list(set(extracted_clauses))
+        dict.fromkeys(
+            extracted_clauses
+        )
     )
 
 
@@ -153,6 +219,12 @@ Do not introduce external legal interpretation.
 Do not generate broader governance implications unless explicitly mentioned.
 
 =======================================================
+AMENDMENT TYPE
+=======================================================
+
+{amendment_type}
+
+=======================================================
 CONTEXT A: TARGET FOOTNOTE
 =======================================================
 
@@ -163,6 +235,12 @@ CONTEXT B: TARGET REGULATION CLAUSE
 =======================================================
 
 {filtered_context}
+
+=======================================================
+MAPPED REGULATION NUMBERS
+=======================================================
+
+{regulation_numbers_text}
 
 =======================================================
 INTERPRETATION RULES
@@ -188,7 +266,7 @@ INTERPRETATION RULES
 MANDATORY OUTPUT FORMAT
 =======================================================
 
-Your output must contain ONLY the following three fields.
+Your output must contain ONLY the following four fields.
 
 Do not include:
 - introductory lines
@@ -197,8 +275,14 @@ Do not include:
 - section numbers
 - administrative references
 - email ids
+- commentary
+- assumptions
+- meta-analysis
 
 -------------------------------------------------------
+
+Regulation Number:
+(State the mapped regulation number(s) associated with this amendment.)
 
 Gist of amendment:
 (State only the exact legal and practical effect of the amendment reflected in the text.
@@ -213,20 +297,19 @@ Gist of amendment:
 
 - Avoid generic statements such as "specified by the Board" where such wording already existed in the earlier provision.
 
-- Do not include commentary, assumptions, interpretation notes, or meta-analysis.
-
 Do not speculate beyond the text.)
-
 
 Existing provisions of Law prior to amendment:
 (Extract only the prior legal provision from the footer text if available.
-Do not include commentary, assumptions, or explanatory notes.
+
 If not available, write:
 "Not explicitly mentioned")
 
 Action point for listed entity if any:
 (State only compliance actions directly resulting from the amendment text.
+
 If a provision is omitted, state that entities should update internal governance records, trackers, timelines, exemptions, or compliance references to remove references to the omitted provision.
+
 Do not speculate beyond the amendment text.)
 """
 

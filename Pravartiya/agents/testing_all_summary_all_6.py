@@ -1,19 +1,10 @@
+# ============================================================
+# BULK FOOTNOTE COMPLIANCE SUMMARY GENERATOR
+# ============================================================
+
 import json
 import requests
 import re
-import openpyxl
-
-from openpyxl.styles import (
-    Font,
-    PatternFill,
-    Alignment,
-    Border,
-    Side
-)
-
-from openpyxl.utils import (
-    get_column_letter
-)
 
 
 # ============================================================
@@ -29,11 +20,6 @@ def extract_clause_with_footnote_marker(
 
     if marker not in text:
         return text
-
-    # ========================================================
-    # Extract ONLY exact sentence containing footnote marker
-    # Prevents neighboring amendment contamination
-    # ========================================================
 
     pattern = rf'([^.]*?{re.escape(marker)}.*?[.])'
 
@@ -72,244 +58,97 @@ def detect_amendment_type(
 
 
 # ============================================================
-# MAIN PROCESSOR
+# GENERATE SUMMARY FOR SINGLE FOOTER
 # ============================================================
 
-def process_all_footers_to_excel(
+def generate_summary_for_footer(
 
-    mapped_json_path,
+    footer_id,
 
-    output_excel_path
-
+    footer_payload
 ):
 
-    print(
-        f"Loading dataset from '{mapped_json_path}'..."
+    footer_text = footer_payload.get(
+        "footer_text",
+        ""
+    ).strip()
+
+
+    amendment_type = detect_amendment_type(
+        footer_text
     )
 
-    with open(
-        mapped_json_path,
-        "r",
-        encoding="utf-8"
-    ) as f:
 
-        mapped_data = json.load(f)
-
-    if not mapped_data:
-
-        print("Error: Dataset is empty.")
-
-        return
+    regulation_chunks = footer_payload.get(
+        "mapped_regulation_chunks",
+        []
+    )
 
 
     # ========================================================
-    # EXCEL SETUP
+    # EXTRACT REGULATION NUMBERS
     # ========================================================
 
-    wb = openpyxl.Workbook()
+    mapped_regulation_numbers = []
 
-    ws = wb.active
-
-    ws.title = "Regulatory Summary Matrix"
-
-    ws.views.sheetView[0].showGridLines = True
+    extracted_clauses = []
 
 
-    # ========================================================
-    # STYLING
-    # ========================================================
+    for chunk in regulation_chunks:
 
-    navy_header_fill = PatternFill(
-        start_color="1F497D",
-        end_color="1F497D",
-        fill_type="solid"
-    )
-
-    white_bold_font = Font(
-        name="Segoe UI",
-        size=11,
-        bold=True,
-        color="FFFFFF"
-    )
-
-    regular_font = Font(
-        name="Segoe UI",
-        size=10
-    )
-
-    thin_border_side = Side(
-        border_style="thin",
-        color="D9D9D9"
-    )
-
-    thin_border = Border(
-        left=thin_border_side,
-        right=thin_border_side,
-        top=thin_border_side,
-        bottom=thin_border_side
-    )
-
-    zebra_fill = PatternFill(
-        start_color="F9FAFB",
-        end_color="F9FAFB",
-        fill_type="solid"
-    )
-
-
-    headers = [
-
-        "Footer ID",
-
-        "Amendment Type",
-
-        "Footer Text",
-
-        "Matched Boundaries",
-
-        "Mapped Regulation Chunks Content",
-
-        "Filtered Amendment Context",
-
-        "Mistral Compliance Summary"
-    ]
-
-
-    ws.append(headers)
-
-
-    for col_idx, header in enumerate(headers, 1):
-
-        cell = ws.cell(
-            row=1,
-            column=col_idx
-        )
-
-        cell.fill = navy_header_fill
-
-        cell.font = white_bold_font
-
-        cell.alignment = Alignment(
-            horizontal="center",
-            vertical="center",
-            wrap_text=True
-        )
-
-    ws.row_dimensions[1].height = 28
-
-
-    # ========================================================
-    # PROCESS FOOTERS
-    # ========================================================
-
-    row_num = 2
-
-    for footer_id, payload in mapped_data.items():
-
-        footer_text = payload.get(
-            "footer_text",
+        chunk_text = chunk.get(
+            "text",
             ""
+        )
+
+        regulation_number = str(
+            chunk.get("section", "")
         ).strip()
 
+        if regulation_number:
 
-        amendment_type = detect_amendment_type(
-            footer_text
-        )
+            mapped_regulation_numbers.append(
+                regulation_number
+            )
 
-
-        boundaries_list = payload.get(
-            "matched_boundaries",
-            payload.get(
-                "matched_scopes",
-                []
+        isolated_clause = (
+            extract_clause_with_footnote_marker(
+                chunk_text,
+                footer_id
             )
         )
 
-        boundaries_str = "\n".join(
-            boundaries_list
+        extracted_clauses.append(
+            isolated_clause
         )
 
 
-        regulation_chunks = payload.get(
-            "mapped_regulation_chunks",
-            []
-        )
-
-
-        full_chunks_text_list = []
-
-        extracted_clauses_list = []
-
-
-        # ====================================================
-        # EXTRACT LOCALIZED CLAUSES
-        # ====================================================
-
-        for idx, chunk in enumerate(
-            regulation_chunks,
-            1
-        ):
-
-            chunk_text = chunk.get(
-                "text",
-                ""
-            ).strip()
-
-            chapter = chunk.get(
-                "chapter",
-                "N/A"
-            )
-
-            section = chunk.get(
-                "section",
-                "N/A"
-            )
-
-            ch_info = (
-                f"Chunk {idx} "
-                f"({chapter} -> Section {section}):\n"
-                f"{chunk_text}"
-            )
-
-            full_chunks_text_list.append(
-                ch_info
-            )
-
-
-            isolated = (
-                extract_clause_with_footnote_marker(
-                    chunk_text,
-                    footer_id
-                )
-            )
-
-            extracted_clauses_list.append(
-                isolated
-            )
-
-
-        chunks_column_data = (
-            "\n\n---\n\n".join(
-                full_chunks_text_list
+    mapped_regulation_numbers = sorted(
+        list(
+            set(
+                mapped_regulation_numbers
             )
         )
+    )
 
 
-        # ====================================================
-        # PRESERVE ORDER + REMOVE DUPLICATES
-        # ====================================================
+    regulation_numbers_text = ", ".join(
+        mapped_regulation_numbers
+    )
 
-        filtered_context = "\n\n".join(
-            dict.fromkeys(
-                extracted_clauses_list
-            )
+
+    filtered_context = "\n\n".join(
+        dict.fromkeys(
+            extracted_clauses
         )
+    )
 
 
-        # ====================================================
-        # STRICT LEGAL PROMPT
-        # ====================================================
+    # ========================================================
+    # PROMPT
+    # ========================================================
 
-        prompt = f"""
+    prompt = f"""
 [SYSTEM INSTRUCTION]
 
 You are a factual legal documentation parser.
@@ -340,6 +179,12 @@ CONTEXT B: TARGET REGULATION CLAUSE
 {filtered_context}
 
 =======================================================
+MAPPED REGULATION NUMBERS
+=======================================================
+
+{regulation_numbers_text}
+
+=======================================================
 INTERPRETATION RULES
 =======================================================
 
@@ -363,7 +208,7 @@ INTERPRETATION RULES
 MANDATORY OUTPUT FORMAT
 =======================================================
 
-Your output must contain ONLY the following three fields.
+Your output must contain ONLY the following four fields.
 
 Do not include:
 - introductory lines
@@ -378,187 +223,160 @@ Do not include:
 
 -------------------------------------------------------
 
+Regulation Number:
+(State the mapped regulation number(s) associated with this amendment.)
+
 Gist of amendment:
-(State only the exact legal and practical effect of the amendment reflected in the text.
-
-- If a provision is inserted, clearly state the new requirement, obligation, disclosure, exemption, timeline, or compliance condition introduced.
-
-- If a provision is omitted, clearly state that the relevant requirement, obligation, exemption, disclosure requirement, or timeline stands removed.
-
-- If a provision is substituted, summarize the practical regulatory change introduced by the revised provision instead of mechanically comparing old and new wording.
-
-- Focus only on the material change introduced by the amendment.
-
-- Avoid generic statements such as "specified by the Board" where such wording already existed in the earlier provision.
-
-Do not speculate beyond the text.)
+(State only the exact legal and practical effect of the amendment reflected in the text.)
 
 Existing provisions of Law prior to amendment:
 (Extract only the prior legal provision from the footer text if available.
+
 If not available, write:
 "Not explicitly mentioned")
 
 Action point for listed entity if any:
-(State only compliance actions directly resulting from the amendment text.
-
-If a provision is omitted, state that entities should update internal governance records, trackers, timelines, exemptions, or compliance references to remove references to the omitted provision.
-
-Do not speculate beyond the amendment text.)
+(State only compliance actions directly resulting from the amendment text.)
 """
 
 
-        # ====================================================
-        # OLLAMA REQUEST
-        # ====================================================
+    # ========================================================
+    # OLLAMA CALL
+    # ========================================================
 
-        OLLAMA_URL = (
-            "http://localhost:11434/api/generate"
-        )
+    OLLAMA_URL = "http://localhost:11434/api/generate"
 
-        api_payload = {
+    payload = {
 
-            "model": "mistral:latest",
+        "model": "mistral:latest",
 
-            "prompt": prompt,
+        "prompt": prompt,
 
-            "stream": False,
+        "stream": False,
 
-            "options": {
+        "options": {
 
-                "temperature": 0.0,
+            "temperature": 0.0,
 
-                "top_p": 0.1
-            }
+            "top_p": 0.1
         }
-
-
-        print(
-            f"Generating summary for Footer ID {footer_id}..."
-        )
-
-
-        summary_result = ""
-
-
-        try:
-
-            response = requests.post(
-                OLLAMA_URL,
-                json=api_payload,
-                timeout=90
-            )
-
-            if response.status_code == 200:
-
-                summary_result = response.json().get(
-                    "response",
-                    ""
-                ).strip()
-
-            else:
-
-                summary_result = (
-                    f"[ERROR] Status code: "
-                    f"{response.status_code}"
-                )
-
-        except Exception as e:
-
-            summary_result = (
-                f"[ERROR] Ollama failure: {str(e)}"
-            )
-
-
-        # ====================================================
-        # WRITE EXCEL ROW
-        # ====================================================
-
-        row_data = [
-
-            footer_id,
-
-            amendment_type,
-
-            footer_text,
-
-            boundaries_str,
-
-            chunks_column_data,
-
-            filtered_context,
-
-            summary_result
-        ]
-
-
-        ws.append(row_data)
-
-
-        current_fill = (
-            zebra_fill
-            if row_num % 2 == 0
-            else PatternFill(fill_type=None)
-        )
-
-
-        for col_idx in range(1, 8):
-
-            cell = ws.cell(
-                row=row_num,
-                column=col_idx
-            )
-
-            cell.font = regular_font
-
-            cell.border = thin_border
-
-            cell.fill = current_fill
-
-            cell.alignment = Alignment(
-                horizontal="left",
-                vertical="top",
-                wrap_text=True
-            )
-
-
-        row_num += 1
-
-
-    # ========================================================
-    # COLUMN WIDTHS
-    # ========================================================
-
-    column_widths = {
-
-        1: 12,
-
-        2: 16,
-
-        3: 40,
-
-        4: 20,
-
-        5: 55,
-
-        6: 45,
-
-        7: 60
     }
 
 
-    for col_idx, width in column_widths.items():
+    try:
 
-        ws.column_dimensions[
-            get_column_letter(col_idx)
-        ].width = width
+        response = requests.post(
+            OLLAMA_URL,
+            json=payload,
+            timeout=90
+        )
+
+        response.raise_for_status()
+
+        summary_result = response.json().get(
+            "response",
+            ""
+        ).strip()
+
+        return summary_result
+
+    except Exception as e:
+
+        return f"[ERROR] {str(e)}"
 
 
-    wb.save(output_excel_path)
+# ============================================================
+# MAIN BULK PROCESSOR
+# ============================================================
+
+def process_all_footers(
+
+    input_json_path,
+
+    output_json_path
+):
+
+    print(
+        f"Loading JSON from: {input_json_path}"
+    )
+
+    with open(
+        input_json_path,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        mapped_data = json.load(f)
+
+
+    total = len(mapped_data)
+
+    print(
+        f"Total footnotes found: {total}"
+    )
+
+
+    processed_count = 0
+
+
+    for footer_id, payload in mapped_data.items():
+
+        print(
+            f"\nProcessing Footer ID: {footer_id}"
+        )
+
+        summary = generate_summary_for_footer(
+
+            footer_id=footer_id,
+
+            footer_payload=payload
+        )
+
+
+        # ====================================================
+        # ADD SUMMARY TO ORIGINAL JSON
+        # ====================================================
+
+        mapped_data[footer_id][
+            "summary"
+        ] = summary
+
+
+        processed_count += 1
+
+        print(
+            f"Completed {processed_count}/{total}"
+        )
+
+
+    # ========================================================
+    # SAVE UPDATED JSON
+    # ========================================================
+
+    with open(
+        output_json_path,
+        "w",
+        encoding="utf-8"
+    ) as out_f:
+
+        json.dump(
+            mapped_data,
+            out_f,
+            indent=2,
+            ensure_ascii=False
+        )
 
 
     print(
-        f"\nSpreadsheet generated successfully:\n"
-        f"{output_excel_path}"
+        "\n=================================================="
+    )
+
+    print(
+        f"Updated JSON saved to:\n{output_json_path}"
+    )
+
+    print(
+        "=================================================="
     )
 
 
@@ -568,9 +386,9 @@ Do not speculate beyond the amendment text.)
 
 if __name__ == "__main__":
 
-    process_all_footers_to_excel(
+    process_all_footers(
 
-        mapped_json_path="footers_mapped_to_regulations.json",
+        input_json_path="footers_mapped_to_regulations.json",
 
-        output_excel_path="SEBI_Compliance_Summary_Matrix.xlsx"
+        output_json_path="footers_with_compliance_summary.json"
     )
