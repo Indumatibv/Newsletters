@@ -1,35 +1,66 @@
 #!/usr/bin/env python
-# agents/newsletter_parsing_agent.py
+
 # ============================================================
-# PRAVARTIYA NEWSLETTER PARSING AGENT
+# REGULATION PARSING AGENT
+# ============================================================
+#
+# PURPOSE:
+#
+# 1. Read Searching_agent_output.xlsx
+# 2. Filter rows by configurable month
+# 3. Process ONLY amendment regulation PDFs
+# 4. Skip:
+#       - Last amended on
+#       - amended as on
+# 5. Extract effective date from amendment PDF
+# 6. Find corresponding consolidated regulation PDF
+# 7. Send consolidated PDF path to Extract_Chunks_1.py.py
+#
 # ============================================================
 
-import sys
+import re
+import logging
 from pathlib import Path
+from datetime import datetime
+import json
+import pandas as pd
+
+# ============================================================
+# IMPORT FROM Extract_Chunks_1.py.py
+# ============================================================
+
+from Extract_Chunks_1 import process_regulation_pdf
+from Extract_footnote_2 import (process_regulation_footnotes)
+from Filtered_footnote_3 import (filter_footers_by_date)
+from Mapping_chunk_footer_4 import (map_footers_to_exact_chapter_sections)
+from Summary_all_5 import (process_all_footers)
+from Combined_summary_6 import (generate_master_summary)
+# ============================================================
+# CONFIG
+# ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(BASE_DIR))
 
-from storage.minio_client import MinIOClient
+DATA_DIR = BASE_DIR / "data"
 
-import os
-import re
-import json
-import logging
-import warnings
-import time
-from datetime import datetime
-from pathlib import Path
+EXCEL_PATH = DATA_DIR / "test.xlsx"
 
-import pandas as pd
-import torch
+# ============================================================
+# MONTH CONTROL
+# ============================================================
 
-from dotenv import load_dotenv
-from openpyxl import load_workbook, Workbook
-from unstructured.partition.pdf import partition_pdf
-
-from langchain_community.llms import Ollama
-from langchain.prompts import PromptTemplate
+# RUN_MONTH = None
+RUN_MONTH = "2026-01"
+# Examples:
+#
+# RUN_MONTH = None
+# -> current month
+#
+# RUN_MONTH = "2026-01"
+# -> January 2026
+#
+# RUN_MONTH = "2026-04"
+# -> April 2026
 
 # ============================================================
 # LOGGING
@@ -37,465 +68,77 @@ from langchain.prompts import PromptTemplate
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()]
-)
-
-warnings.filterwarnings("ignore")
-
-load_dotenv()
-
-# ============================================================
-# GPU
-# ============================================================
-
-device = torch.device(
-    "cuda" if torch.cuda.is_available() else "cpu"
-)
-
-if device.type == "cuda":
-
-    os.environ["OLLAMA_USE_GPU"] = "1"
-    os.environ["OLLAMA_NUM_GPU_LAYERS"] = "35"
-
-    print(
-        f"Using GPU: "
-        f"{torch.cuda.get_device_name(0)}"
-    )
-
-else:
-
-    os.environ["OLLAMA_USE_GPU"] = "0"
-
-    print("Using CPU")
-
-# ============================================================
-# LLM
-# ============================================================
-
-llm = Ollama(model="mistral:latest")
-
-# ============================================================
-# PATHS
-# ============================================================
-
-DATA_DIR = BASE_DIR / "data"
-
-OUTPUT_EXCEL_DIR = DATA_DIR / "output_excels"
-
-OUTPUT_EXCEL_DIR.mkdir(
-    parents=True,
-    exist_ok=True
-)
-
-CREATED_EXCELS = set()
-
-# ============================================================
-# MONTH FOLDER
-# ============================================================
-
-def get_month_folder() -> Path:
-
-    month_json = DATA_DIR / "month_range.json"
-
-    if not month_json.exists():
-
-        raise RuntimeError(
-            "month_range.json not found"
-        )
-
-    with open(month_json, "r") as f:
-
-        month = json.load(f)
-
-    ms = datetime.strptime(
-        month["month_start"],
-        "%Y-%m-%d"
-    )
-
-    me = datetime.strptime(
-        month["month_end"],
-        "%Y-%m-%d"
-    )
-
-    folder = OUTPUT_EXCEL_DIR / (
-        f"newsletter_{ms:%Y-%m-%d}"
-        f"_to_{me:%Y-%m-%d}"
-    )
-
-    if folder.exists():
-
-        import shutil
-
-        shutil.rmtree(folder)
-
-    folder.mkdir(parents=True)
-
-    return folder
-
-
-MONTH_FOLDER = get_month_folder()
-
-logging.info(
-    f"Monthly newsletter folder -> "
-    f"{MONTH_FOLDER}"
+    format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
 # ============================================================
-# PDF EXTRACTION
+# TITLE DETECTION
 # ============================================================
 
-def extract_pdf_text(
-    pdf_path: Path
-) -> str:
-
-    raw = partition_pdf(
-        filename=str(pdf_path),
-        strategy="fast",
-        include_page_breaks=False
-    )
-
-    text = "\n".join(
-        str(el)
-        for el in raw
-        if el
-    ).strip()
-
-    if not text:
-
-        logging.info(
-            "Fallback to hi_res OCR"
-        )
-
-        raw = partition_pdf(
-            filename=str(pdf_path),
-            strategy="hi_res"
-        )
-
-        text = "\n".join(
-            str(el)
-            for el in raw
-            if el
-        ).strip()
-
-    return text
-
-# ============================================================
-# CLEANER
-# ============================================================
-
-def clean_summary(
-    summary: str
-) -> str:
-
-    if not summary:
-
-        return "NA"
-
-    summary = re.sub(
-        r'https?://\S+',
-        '',
-        summary
-    )
-
-    summary = re.sub(
-        r'\S+@\S+',
-        '',
-        summary
-    )
-
-    summary = re.sub(
-        r'circular\s+no\.?\s*[:\-]?\s*\S+',
-        '',
-        summary,
-        flags=re.IGNORECASE
-    )
-
-    summary = re.sub(
-        r'(SEBI|CIR|CFD|HO)'
-        r'/[A-Z0-9/_\-.]+',
-        '',
-        summary,
-        flags=re.IGNORECASE
-    )
-
-    summary = re.sub(
-        r'\n\s*\n+',
-        '\n',
-        summary
-    )
-
-    summary = re.sub(
-        r'\(?www\.[^\s)]+\)?',
-        '',
-        summary,
-        flags=re.IGNORECASE
-    )
-    return summary.strip()
-
-# ============================================================
-# PROMPTS
-# ============================================================
-
-INFORMAL_GUIDANCE_PROMPT = PromptTemplate(
-    template="""
-You are a senior SEBI regulatory analyst preparing a Pravarthiya newsletter summary.
-
-The document is a SEBI Informal Guidance letter.
-
-MANDATORY REQUIREMENTS:
-
-1. The summary MUST clearly include:
-- Background and relevant facts
-- Query raised before SEBI
-- SEBI's response/interpretation
-
-2. Facts should focus ONLY on:
-- regulatory issue
-- legal interpretation
-- compliance concern
-- relevant SEBI regulation
-
-3. Facts should NOT focus on:
-- transaction mechanics
-- percentage shareholding
-- acquisition size
-- commercial deal details
-- numerical transaction details
-
-4. Clearly explain:
-- what clarification was sought
-- what SEBI interpreted
-- compliance implication
-
-5. Use concise newsletter-style language.
-
-6. Output ONLY bullet points.
-
-7. Maximum 5 bullet points.
-
-TEXT:
-{text}
-
-FINAL SUMMARY:
-""",
-    input_variables=["text"]
-)
-
-
-# EXCHANGE_CIRCULAR_PROMPT = PromptTemplate(
-#     template="""
-# You are a senior regulatory analyst preparing a Pravarthiya newsletter summary.
-
-# The document is an NSE/BSE circular.
-
-# MANDATORY REQUIREMENTS:
-
-# 1. The summary MUST clearly include:
-# - gist of circular
-# - stated compliance implication
-# - stated operational implication
-
-# 2. Summarize ONLY information explicitly available in the circular text.
-
-# 3. Do NOT infer, assume, or invent amendment details that are not clearly stated in the circular.
-
-# 4. If the circular merely forwards or references another SEBI circular:
-# - summarize the forwarding communication
-# - summarize the stated purpose
-# - summarize the stated compliance action only
-
-# 5. Clearly explain:
-# - what the circular is about
-# - who is impacted
-# - what entities/intermediaries are expected to do
-
-# 6. STRICTLY AVOID:
-# - hallucinated amendments
-# - inferred regulatory changes
-# - unsupported compliance obligations
-# - circular reference numbers
-# - procedural boilerplate
-# - URLs
-# - email IDs
-# - repetitive legal wording
-# - clause dumping
-# - copying circular language verbatim
-
-# 7. Use concise newsletter-style language.
-
-# 8. Output ONLY bullet points.
-
-# 9. Maximum 5 bullet points.
-
-# 10. Focus ONLY on material information explicitly stated in the circular.
-
-# TEXT:
-# {text}
-
-# FINAL SUMMARY:
-# """,
-#     input_variables=["text"]
-# )
-
-EXCHANGE_CIRCULAR_PROMPT = PromptTemplate(
-    template="""
-You are a senior regulatory analyst preparing a Pravarthiya newsletter summary.
-
-The document is an NSE/BSE circular.
-
-MANDATORY REQUIREMENTS:
-
-1. The summary MUST include:
-- gist of circular
-- stated compliance action
-- impacted entities
-
-2. Summarize ONLY information explicitly available in the circular text.
-
-3. Do NOT infer, assume, or invent:
-- amendment details
-- operational changes
-- compliance obligations
-- timelines
-- thresholds
-unless they are explicitly stated in the circular.
-
-4. If the circular merely forwards or references another SEBI circular:
-- clearly state that the exchange has referred/circulated the SEBI circular
-- summarize only the stated purpose/reference
-- mention necessary compliance action if stated
-
-5. STRICTLY AVOID:
-- circular reference numbers
-- URLs
-- email IDs
-- procedural boilerplate
-- unsupported assumptions
-- hallucinated regulatory changes
-- copying circular text verbatim
-- mentioning absence of information
-- speculating about referenced circulars
-
-
-6. Use concise newsletter-style language.
-
-7. Output ONLY bullet points.
-
-8. Maximum 4 bullet points.
-
-9. Keep the summary factual, concise and grounded strictly in the circular text.
-
-TEXT:
-{text}
-
-FINAL SUMMARY:
-""",
-    input_variables=["text"]
+AMENDED_TITLE_PATTERN = re.compile(
+    r'last\s+amended\s+on|amended\s+as\s+on',
+    re.IGNORECASE
 )
 
 # ============================================================
-# SUMMARY GENERATORS
+# GAZETTE DETECTION
 # ============================================================
 
-def generate_informal_guidance_summary(
-    text: str
-):
+GAZETTE_FORCE_PATTERN = re.compile(
+    r'they\s+shall\s+come\s+into\s+force\s+on\s+the\s+date\s+of\s+their\s+publication\s+in\s+the\s+official\s+gazette',
+    re.IGNORECASE
+)
 
-    summary = llm.invoke(
-        INFORMAL_GUIDANCE_PROMPT.format(
-            text=text[:12000]
-        )
-    ).strip()
+_CITY_PAT = (
+    r"(?:mumbai|bombay|new\s+delhi|delhi|hyderabad|"
+    r"chennai|madras|kolkata|calcutta|bangalore|"
+    r"bengaluru|ahmedabad|pune)"
+)
 
-    return clean_summary(summary)
+NOTIFICATION_DATE_PATTERNS = [
 
+    re.compile(
+        _CITY_PAT + r",?\s+the\s+(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*\d{4})",
+        re.IGNORECASE
+    ),
 
-def generate_exchange_circular_summary(
-    text: str
-):
-
-    summary = llm.invoke(
-        EXCHANGE_CIRCULAR_PROMPT.format(
-            text=text[:12000]
-        )
-    ).strip()
-
-    return clean_summary(summary)
+    re.compile(
+        r"\b(\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+\s*,?\s*\d{4})\b",
+        re.IGNORECASE
+    ),
+]
 
 # ============================================================
-# EXCEL UPDATE
+# HELPERS
 # ============================================================
 
-def update_excel(
-    row: pd.Series
-):
+def get_month_date_range(run_month=None):
 
-    vertical = row["Verticals"]
+    today = datetime.today()
 
-    sub = row["SubCategory"]
+    if run_month is None:
 
-    excel_path = (
-        MONTH_FOLDER /
-        f"{vertical}_Newsletter.xlsx"
-    )
-
-    CREATED_EXCELS.add(
-        excel_path.name
-    )
-
-    if excel_path.exists():
-
-        wb = load_workbook(
-            excel_path
-        )
+        year = today.year
+        month = today.month
 
     else:
 
-        wb = Workbook()
+        year, month = map(int, run_month.split("-"))
 
-        wb.remove(
-            wb.active
-        )
+    start_date = datetime(year, month, 1)
 
-    sheet_name = (
-        sub
-        if sub
-        else "General"
-    )
+    if month == 12:
 
-    if sheet_name not in wb.sheetnames:
-
-        ws = wb.create_sheet(
-            title=sheet_name
-        )
-
-        ws.append(
-            list(row.index)
-        )
+        end_date = datetime(year + 1, 1, 1)
 
     else:
 
-        ws = wb[sheet_name]
+        end_date = datetime(year, month + 1, 1)
 
-    ws.append([
-        row.get(c, "NA")
-        for c in row.index
-    ])
+    return start_date, end_date
 
-    wb.save(excel_path)
 
-    wb.close()
-
-# ============================================================
-# ISSUE DATE
-# ============================================================
-
-def get_issue_date(
-    row: pd.Series
-) -> str:
-
-    issue_date = ""
+def parse_row_date(row):
 
     for col in [
         "Date",
@@ -505,274 +148,766 @@ def get_issue_date(
         "Issue Date"
     ]:
 
-        val = row.get(col, "")
+        val = row.get(col)
 
-        if val and str(val).strip():
+        if pd.notna(val):
 
-            if isinstance(
-                val,
-                datetime
-            ):
+            try:
+                return pd.to_datetime(val)
 
-                issue_date = val.strftime(
-                    "%b %d, %Y"
-                )
+            except Exception:
+                pass
 
-            else:
+    return None
 
-                issue_date = str(val).strip()
 
-            break
+def is_amended_title(title: str) -> bool:
 
-    return issue_date
+    if not isinstance(title, str):
+
+        return False
+
+    return bool(
+        AMENDED_TITLE_PATTERN.search(title)
+    )
+
+
+def is_amendment_regulation(title: str) -> bool:
+
+    if not isinstance(title, str):
+
+        return False
+
+    return bool(
+        re.search(
+            r'\(amendment\)',
+            title,
+            re.IGNORECASE
+        )
+    )
+
+
+def normalize_regulation_title(title: str) -> str:
+
+    if not isinstance(title, str):
+
+        return ""
+
+    title = re.sub(
+        r'\[(last\s+amended\s+on|amended\s+as\s+on).*?\]',
+        '',
+        title,
+        flags=re.IGNORECASE
+    )
+
+    title = re.sub(
+        r'\(amendment\)',
+        '',
+        title,
+        flags=re.IGNORECASE
+    )
+
+    title = re.sub(
+        r'regulations[,]?\s*\d{4}',
+        'regulations',
+        title,
+        flags=re.IGNORECASE
+    )
+
+    title = re.sub(
+        r'\s+',
+        ' ',
+        title
+    ).strip()
+
+    return title.lower()
+
+
+def find_last_amended_pdf(
+    amendment_title: str,
+    df: pd.DataFrame
+):
+
+    amendment_base = normalize_regulation_title(
+        amendment_title
+    )
+
+    amended_rows = df[
+        df["Title"].str.contains(
+            r'last\s+amended\s+on|amended\s+as\s+on',
+            case=False,
+            na=False,
+            regex=True
+        )
+    ]
+
+    for _, row in amended_rows.iterrows():
+
+        candidate_base = normalize_regulation_title(
+            row["Title"]
+        )
+
+        if amendment_base == candidate_base:
+
+            return row
+
+    return None
 
 # ============================================================
-# PROCESSOR
+# PDF TEXT EXTRACTION
 # ============================================================
 
-def process_newsletter_row(
-    row: pd.Series
-) -> pd.Series | None:
+def extract_pdf_text(pdf_path: Path):
 
-    sub = row.get(
-        "SubCategory",
-        ""
-    )
+    import pdfplumber
 
-    if not isinstance(
-        sub,
-        str
-    ):
+    full_text = []
 
-        return None
+    with pdfplumber.open(pdf_path) as pdf:
 
-    sub_clean = (
-        sub.strip().lower()
-    )
+        for page in pdf.pages:
 
-    allowed = {
-        "informal guidance",
-        "circular-bse",
-        "circular-nse"
-    }
+            text = page.extract_text()
 
-    if sub_clean not in allowed:
+            if text:
 
-        return None
+                full_text.append(text)
 
-    pdf_path = Path(
-        row["Path"]
-    )
+    return "\n".join(full_text)
 
-    try:
+# ============================================================
+# EFFECTIVE DATE
+# ============================================================
 
-        text = extract_pdf_text(
-            pdf_path
-        )
+def extract_notification_date(text: str):
 
-    except Exception as e:
+    sample = text[:3000]
 
-        logging.error(
-            f"PDF extraction failed: {e}"
-        )
+    for pattern in NOTIFICATION_DATE_PATTERNS:
 
-        row["Summary"] = "NA"
+        match = pattern.search(sample)
 
-        return row
+        if match:
 
-    title = row.get(
-        "Title",
-        ""
-    )
+            return match.group(1).strip()
 
-    issue_date = get_issue_date(
-        row
-    )
+    return "N/A"
 
-    # ========================================================
-    # INFORMAL GUIDANCE
-    # ========================================================
 
-    if sub_clean == "informal guidance":
+def determine_effective_date(text: str):
 
-        summary = (
-            generate_informal_guidance_summary(
-                text=text
-            )
-        )
+    if GAZETTE_FORCE_PATTERN.search(text):
 
-        final_summary = (
-            f"{title} dated "
-            f"{issue_date}\n\n"
-            f"{summary}"
-        )
+        return extract_notification_date(text)
 
-    # ========================================================
-    # NSE/BSE CIRCULAR
-    # ========================================================
-
-    else:
-
-        summary = (
-            generate_exchange_circular_summary(
-                text=text
-            )
-        )
-
-        final_summary = (
-            f"{title} dated "
-            f"{issue_date}\n\n"
-            f"{summary}"
-        )
-
-    row["Summary"] = final_summary
-
-    row["EmbeddingText"] = text[:8000]
-
-    return row
+    return "N/A"
 
 # ============================================================
 # MAIN
 # ============================================================
 
-def main(
-    excel_file: str
-):
+def main():
 
-    df = pd.read_excel(
-        excel_file
-    )
+    if not EXCEL_PATH.exists():
 
-    required = [
-        "Verticals",
-        "SubCategory",
-        "Path"
-    ]
-
-    for col in required:
-
-        if col not in df.columns:
-
-            raise ValueError(
-                f"Missing required column: "
-                f"{col}"
-            )
+        raise FileNotFoundError(
+            f"Excel not found: {EXCEL_PATH}"
+        )
 
     logging.info(
-        f"Total rows in input: "
-        f"{len(df)}"
+        f"Reading Excel: {EXCEL_PATH}"
     )
 
-    sebi_mask = (
-        df["Verticals"]
-        .str.strip()
-        .str.lower()
-        .isin(
-            {
-                "listed companies",
-                "sebi",
-                "aif"
-            }
-        )
-    )
+    df = pd.read_excel(EXCEL_PATH)
 
-    df_sebi = (
-        df[sebi_mask]
-        .copy()
+    # ========================================================
+    # MONTH FILTER
+    # ========================================================
+
+    start_date, end_date = get_month_date_range(
+        RUN_MONTH
     )
 
     logging.info(
-        f"SEBI rows to process: "
-        f"{len(df_sebi)}"
+        f"Filtering rows from "
+        f"{start_date.date()} "
+        f"to "
+        f"{end_date.date()}"
     )
 
-    start = time.time()
+    filtered_rows = []
 
-    processed_count = 0
+    for _, row in df.iterrows():
 
-    for idx, row in (
-        df_sebi.iterrows()
-    ):
+        row_date = parse_row_date(row)
 
-        logging.info(
-            f"[{idx+1}] Processing: "
-            f"{row.get('Title', '')[:80]}"
-        )
-
-        processed = (
-            process_newsletter_row(
-                row
-            )
-        )
-
-        if processed is None:
+        if row_date is None:
 
             continue
 
-        update_excel(
-            processed
-        )
+        if start_date <= row_date < end_date:
 
-        processed_count += 1
+            filtered_rows.append(row)
+
+    df = pd.DataFrame(filtered_rows)
 
     logging.info(
-        f"Completed processing "
-        f"{processed_count} "
-        f"newsletter items in "
-        f"{time.time() - start:.2f}s"
+        f"Rows after month filter: {len(df)}"
     )
 
     # ========================================================
-    # MINIO UPLOAD
+    # PROCESS
     # ========================================================
 
-    try:
+    results = []
 
-        minio = MinIOClient()
+    for _, row in df.iterrows():
 
-        month_folder_name = (
-            MONTH_FOLDER.name
-        )
+        title = row.get("Title", "")
 
-        minio_prefix = (
-            f"monthly_outputs/"
-            f"{month_folder_name}/"
-        )
+        subcategory = str(
+            row.get("SubCategory", "")
+        ).strip().lower()
 
-        minio.delete_prefix(
-            minio_prefix
-        )
+        # ====================================================
+        # ONLY REGULATIONS
+        # ====================================================
 
-        for excel_name in CREATED_EXCELS:
+        if subcategory != "regulations":
 
-            local_excel = (
-                MONTH_FOLDER /
-                excel_name
+            continue
+
+        # ====================================================
+        # SKIP CONSOLIDATED PDF
+        # ====================================================
+
+        if is_amended_title(title):
+
+            logging.info(
+                f"Skipping consolidated PDF: {title}"
             )
 
-            object_path = (
-                f"{minio_prefix}"
-                f"{excel_name}"
+            continue
+
+        # ====================================================
+        # ONLY AMENDMENT REGULATIONS
+        # ====================================================
+
+        if not is_amendment_regulation(title):
+
+            continue
+
+        logging.info(
+            f"Processing amendment regulation: {title}"
+        )
+
+        amendment_pdf_path = Path(
+            row["Path"]
+        )
+
+        if not amendment_pdf_path.exists():
+
+            logging.warning(
+                f"Missing amendment PDF: "
+                f"{amendment_pdf_path}"
             )
 
-            minio.upload_file(
-                local_path=str(
-                    local_excel
-                ),
-                object_path=object_path
+            continue
+
+        # ====================================================
+        # EFFECTIVE DATE
+        # FROM AMENDMENT PDF
+        # ====================================================
+
+        amendment_text = extract_pdf_text(
+            amendment_pdf_path
+        )
+
+        effective_date = determine_effective_date(
+            amendment_text
+        )
+
+        logging.info(
+            f"Effective date: {effective_date}"
+        )
+
+        # ====================================================
+        # FIND MATCHING CONSOLIDATED PDF
+        # ====================================================
+
+        matched_row = find_last_amended_pdf(
+            title,
+            df
+        )
+
+        if matched_row is None:
+
+            logging.warning(
+                f"No consolidated PDF found for: "
+                f"{title}"
+            )
+
+            continue
+
+        consolidated_pdf_path = Path(
+            matched_row["Path"]
+        )
+
+        if not consolidated_pdf_path.exists():
+
+            logging.warning(
+                f"Missing consolidated PDF: "
+                f"{consolidated_pdf_path}"
+            )
+
+            continue
+
+        logging.info(
+            f"Matched consolidated PDF: "
+            f"{matched_row['Title']}"
+        )
+
+        # ====================================================
+        # SEND TO Extract_Chunks_1.py.py
+        # ====================================================
+
+        chunks = process_regulation_pdf(
+            pdf_path=str(consolidated_pdf_path),
+            title=matched_row["Title"]
+        )
+
+        # ========================================================
+        # FOOTNOTE EXTRACTION
+        # ========================================================
+
+        footnotes = process_regulation_footnotes(
+            pdf_path=str(consolidated_pdf_path)
+        )
+
+        # ========================================================
+        # FILTER FOOTNOTES USING ISSUE DATE
+        # ========================================================
+
+        filtered_footnotes = filter_footers_by_date(
+
+            footnotes=footnotes,
+
+            issue_date=row.get("IssueDate")
+        )
+
+        # ========================================================
+        # MAP FILTERED FOOTNOTES TO REGULATION CHUNKS
+        # ========================================================
+
+        mapped_footnotes = (
+            map_footers_to_exact_chapter_sections(
+
+                filtered_footnotes=
+                    filtered_footnotes,
+
+                regulation_chunks=
+                    chunks
+            )
+        )
+
+        # ========================================================
+        # GENERATE COMPLIANCE SUMMARIES
+        # ========================================================
+
+        summarized_footnotes = process_all_footers(
+
+            mapped_data=mapped_footnotes
+        )
+
+        # ========================================================
+        # GENERATE COMBINED MASTER SUMMARY
+        # ========================================================
+
+        # combined_summary = generate_master_summary(
+        #     mapped_data=summarized_footnotes
+        # )
+
+        combined_summary = generate_master_summary(
+            mapped_data=summarized_footnotes,
+            effective_date=effective_date
+        )
+        logging.info(
+            f"Generated summaries for "
+            f"{len(summarized_footnotes)} "
+            f"footnotes"
+        )
+
+        logging.info(
+            f"Mapped "
+            f"{len(mapped_footnotes)} "
+            f"footnotes to chunks"
+        )
+
+        logging.info(
+            f"Filtered "
+            f"{len(filtered_footnotes)} "
+            f"footnotes for issue date"
+        )
+
+        logging.info(
+            f"Extracted "
+            f"{len(footnotes)} footnotes"
+        )
+      
+        # ========================================================
+        # SAFE OUTPUT FOLDER NAME
+        # ========================================================
+
+
+        month_folder = (
+            RUN_MONTH
+            if RUN_MONTH
+            else datetime.today().strftime("%Y-%m")
+        )
+
+
+        output_dir = (
+            BASE_DIR /
+            "data" /
+            "output" /
+            month_folder
+        )
+        output_dir.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        # ========================================================
+        # SHARED METADATA
+        # ========================================================
+
+        metadata = {
+
+            "Verticals":
+                row.get("Verticals", ""),
+
+            "SubCategory":
+                row.get("SubCategory", ""),
+
+            "Year":
+                row.get("Year", ""),
+
+            "Month":
+                row.get("Month", ""),
+
+            "IssueDate":
+                str(row.get("IssueDate", "")),
+
+            "Title":
+                row.get("Title", ""),
+
+            "PDF_URL":
+                row.get("PDF_URL", ""),
+
+            "File Name":
+                row.get("File Name", ""),
+
+            "Path":
+                row.get("Path", ""),
+
+            "effective_date":
+                effective_date,
+
+            "amendment_title":
+                title,
+
+            "consolidated_title":
+                matched_row["Title"],
+
+            "amendment_pdf":
+                str(amendment_pdf_path),
+
+            "consolidated_pdf":
+                str(consolidated_pdf_path)
+        }
+
+        # ========================================================
+        # CHUNKS JSON
+        # ========================================================
+
+        chunks_data = {
+
+            **metadata,
+
+            "total_chunks":
+                len(chunks),
+
+            "chunks":
+                chunks
+        }
+
+        # ========================================================
+        # FOOTNOTES JSON
+        # ========================================================
+
+        footnotes_data = {
+
+            **metadata,
+
+            "total_footnotes":
+                len(filtered_footnotes),
+
+            "footnotes":
+                filtered_footnotes
+        }
+
+        # ========================================================
+        # MAPPED FOOTNOTES JSON
+        # ========================================================
+
+        mapped_footnotes_data = {
+
+            **metadata,
+
+            "total_mapped_footnotes":
+                len(summarized_footnotes),
+
+            "mapped_footnotes":
+                summarized_footnotes
+        }
+
+        # ========================================================
+        # SAVE MAPPED FOOTNOTES JSON
+        # ========================================================
+
+        mapped_footnotes_path = (
+            output_dir /
+            "mapped_footnotes.json"
+        )
+
+        with open(
+            mapped_footnotes_path,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                mapped_footnotes_data,
+                f,
+                indent=4,
+                ensure_ascii=False
             )
 
         logging.info(
-            "Uploaded newsletter "
-            "files to MinIO"
+            f"Saved mapped footnotes JSON: "
+            f"{mapped_footnotes_path}"
         )
 
-    except Exception as e:
 
-        logging.error(
-            f"MinIO upload failed: "
-            f"{e}"
+        # ========================================================
+        # SAVE CHUNKS JSON
+        # ========================================================
+
+        chunks_path = output_dir / "chunks.json"
+
+        with open(
+            chunks_path,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                chunks_data,
+                f,
+                indent=4,
+                ensure_ascii=False
+            )
+
+        logging.info(
+            f"Saved chunks JSON: {chunks_path}"
         )
+
+        # ========================================================
+        # SAVE FOOTNOTES JSON
+        # ========================================================
+
+        footnotes_path = output_dir / "footnotes.json"
+
+        with open(
+            footnotes_path,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                footnotes_data,
+                f,
+                indent=4,
+                ensure_ascii=False
+            )
+
+        logging.info(
+            f"Saved footnotes JSON: {footnotes_path}"
+        )
+
+        # ========================================================
+        # OUTPUT EXCEL DIRECTORY
+        # ========================================================
+
+
+        folder_name = (
+            RUN_MONTH
+            if RUN_MONTH
+            else datetime.today().strftime("%Y-%m")
+        )
+
+        excel_output_dir = (
+
+            BASE_DIR /
+
+            "data" /
+
+            "output_excels" /
+
+            folder_name
+        )
+
+        excel_output_dir.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        # ========================================================
+        # EXCEL FILE NAME = VERTICAL
+        # ========================================================
+
+        vertical_name = str(
+            row.get("Verticals", "Unknown")
+        ).strip()
+
+        safe_vertical_name = re.sub(
+            r'[\\/*?:\\[\\]]',
+            "_",
+            vertical_name
+        )
+
+        excel_path = (
+            excel_output_dir /
+            f"{safe_vertical_name}.xlsx"
+        )
+
+        # ========================================================
+        # SHEET NAME = SUBCATEGORY
+        # ========================================================
+
+        sheet_name = str(
+            row.get("SubCategory", "General")
+        ).strip()
+
+        sheet_name = sheet_name[:31]
+
+        # ========================================================
+        # FINAL EXCEL ROW
+        # ========================================================
+
+        final_excel_data = {
+
+            **metadata,
+
+            "mapped_footnotes":
+                json.dumps(
+                    summarized_footnotes,
+                    ensure_ascii=False
+                ),
+
+            "combined_summary":
+                combined_summary
+        }
+
+        new_row_df = pd.DataFrame(
+            [final_excel_data]
+        )
+
+        # ========================================================
+        # APPEND TO EXCEL
+        # ========================================================
+
+        if excel_path.exists():
+
+            with pd.ExcelWriter(
+
+                excel_path,
+
+                engine="openpyxl",
+
+                mode="a",
+
+                if_sheet_exists="overlay"
+
+            ) as writer:
+
+                try:
+
+                    existing_df = pd.read_excel(
+                        excel_path,
+                        sheet_name=sheet_name
+                    )
+
+                    startrow = len(existing_df) + 1
+
+                    header = False
+
+                except Exception:
+
+                    startrow = 0
+
+                    header = True
+
+                new_row_df.to_excel(
+
+                    writer,
+
+                    sheet_name=sheet_name,
+
+                    index=False,
+
+                    header=header,
+
+                    startrow=startrow
+                )
+
+        else:
+
+            with pd.ExcelWriter(
+
+                excel_path,
+
+                engine="openpyxl"
+
+            ) as writer:
+
+                new_row_df.to_excel(
+
+                    writer,
+
+                    sheet_name=sheet_name,
+
+                    index=False
+                )
+
+        logging.info(
+            f"Updated Excel: {excel_path}"
+        )
+
+        results.append(metadata)
+
+
+        logging.info(
+            f"Generated "
+            f"{len(chunks)} chunks"
+        )
+
+    logging.info(
+        f"Completed processing "
+        f"{len(results)} regulations"
+    )
+
+    return results
 
 # ============================================================
 # ENTRY
@@ -780,16 +915,4 @@ def main(
 
 if __name__ == "__main__":
 
-    excel = (
-        DATA_DIR /
-        "Searching_agent_output.xlsx"
-    )
-
-    if not excel.exists():
-
-        raise FileNotFoundError(
-            "Searching_agent_output.xlsx "
-            "not found"
-        )
-
-    main(str(excel))
+    main()
