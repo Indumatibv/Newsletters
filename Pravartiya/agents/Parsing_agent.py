@@ -29,12 +29,12 @@ import pandas as pd
 # IMPORT FROM Extract_Chunks_1.py.py
 # ============================================================
 
-from Extract_Chunks_1 import process_regulation_pdf
-from Extract_footnote_2 import (process_regulation_footnotes)
-from Filtered_footnote_3 import (filter_footers_by_date)
-from Mapping_chunk_footer_4 import (map_footers_to_exact_chapter_sections)
-from Summary_all_5 import (process_all_footers)
-from Combined_summary_6 import (generate_master_summary)
+from SEBI_Regulations.Extract_Chunks_1 import process_regulation_pdf
+from SEBI_Regulations.Extract_footnote_2 import (process_regulation_footnotes)
+from SEBI_Regulations.Filtered_footnote_3 import (filter_footers_by_date)
+from SEBI_Regulations.Mapping_chunk_footer_4 import (map_footers_to_exact_chapter_sections)
+from SEBI_Regulations.Summary_all_5 import (process_all_footers)
+from SEBI_Regulations.Combined_summary_6 import (generate_master_summary)
 # ============================================================
 # CONFIG
 # ============================================================
