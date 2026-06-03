@@ -39,6 +39,9 @@ from SEBI_Regulations.Mapping_chunk_footer_4 import (map_footers_to_exact_chapte
 from SEBI_Regulations.Summary_all_5 import (process_all_footers)
 from SEBI_Regulations.Combined_summary_6 import (generate_master_summary)
 from SEBI_other_subdomains.SEBI_informal_guidance import (process_informal_guidance)
+from SEBI_other_subdomains.SEBI_master_circular import (process_master_circular)
+from SEBI_other_subdomains.SEBI_consultation_paper import (process_consultation_paper)
+from SEBI_other_subdomains.SEBI_press_release import (process_press_release)
 # ============================================================
 # CONFIG
 # ============================================================
@@ -54,7 +57,7 @@ EXCEL_PATH = DATA_DIR / "test.xlsx"
 # ============================================================
 
 # RUN_MONTH = None
-RUN_MONTH = "2026-02"
+RUN_MONTH = "2026-04"
 # Examples:
 #
 # RUN_MONTH = None
@@ -469,6 +472,484 @@ def main():
             ).strip()[:31]
 
             summary = _html.unescape(summary).replace("&", "and")
+
+            final_excel_data = {
+
+                "Verticals":
+                    row.get("Verticals", ""),
+
+                "SubCategory":
+                    row.get("SubCategory", ""),
+
+                "Year":
+                    row.get("Year", ""),
+
+                "Month":
+                    row.get("Month", ""),
+
+                "IssueDate":
+                    str(row.get("IssueDate", "")),
+
+                "Title":
+                    row.get("Title", ""),
+
+                "PDF_URL":
+                    row.get("PDF_URL", ""),
+
+                "File Name":
+                    row.get("File Name", ""),
+
+                "Path":
+                    row.get("Path", ""),
+
+                "Summary":
+                    summary
+            }
+
+            new_row_df = pd.DataFrame(
+                [final_excel_data]
+            )
+
+            if excel_path.exists():
+
+                with pd.ExcelWriter(
+                    excel_path,
+                    engine="openpyxl",
+                    mode="a",
+                    if_sheet_exists="overlay"
+                ) as writer:
+
+                    try:
+
+                        existing_df = pd.read_excel(
+                            excel_path,
+                            sheet_name=sheet_name
+                        )
+
+                        startrow = len(existing_df) + 1
+                        header = False
+
+                    except Exception:
+
+                        startrow = 0
+                        header = True
+
+                    new_row_df.to_excel(
+                        writer,
+                        sheet_name=sheet_name,
+                        index=False,
+                        header=header,
+                        startrow=startrow
+                    )
+
+            else:
+
+                with pd.ExcelWriter(
+                    excel_path,
+                    engine="openpyxl"
+                ) as writer:
+
+                    new_row_df.to_excel(
+                        writer,
+                        sheet_name=sheet_name,
+                        index=False
+                    )
+
+            logging.info(
+                f"Updated Excel: {excel_path}"
+            )
+
+            continue
+
+        # ====================================================
+        # MASTER CIRCULAR
+        # ====================================================
+
+        if subcategory == "master circular":
+
+            logging.info(
+                f"Processing master circular: {title}"
+            )
+
+            pdf_path = Path(
+                row["Path"]
+            )
+
+            if not pdf_path.exists():
+
+                logging.warning(
+                    f"Missing PDF: {pdf_path}"
+                )
+
+                continue
+
+            master_output = (
+                process_master_circular(
+                    pdf_path=str(pdf_path)
+                )
+            )
+
+            summary = master_output["summary"]
+
+            month_folder = (
+                RUN_MONTH
+                if RUN_MONTH
+                else datetime.today().strftime("%Y-%m")
+            )
+
+            excel_output_dir = (
+                BASE_DIR /
+                "data" /
+                "output_excels" /
+                month_folder
+            )
+
+            excel_output_dir.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            vertical_name = str(
+                row.get("Verticals", "Unknown")
+            ).strip()
+
+            safe_vertical_name = re.sub(
+                r'[\\/*?:\\[\\]]',
+                "_",
+                vertical_name
+            )
+
+            excel_path = (
+                excel_output_dir /
+                f"{safe_vertical_name}.xlsx"
+            )
+
+            sheet_name = str(
+                row.get("SubCategory", "General")
+            ).strip()[:31]
+
+            summary = _html.unescape(summary)
+
+            final_excel_data = {
+
+                "Verticals":
+                    row.get("Verticals", ""),
+
+                "SubCategory":
+                    row.get("SubCategory", ""),
+
+                "Year":
+                    row.get("Year", ""),
+
+                "Month":
+                    row.get("Month", ""),
+
+                "IssueDate":
+                    str(row.get("IssueDate", "")),
+
+                "Title":
+                    row.get("Title", ""),
+
+                "PDF_URL":
+                    row.get("PDF_URL", ""),
+
+                "File Name":
+                    row.get("File Name", ""),
+
+                "Path":
+                    row.get("Path", ""),
+
+                "Summary":
+                    summary
+            }
+
+            new_row_df = pd.DataFrame(
+                [final_excel_data]
+            )
+
+            if excel_path.exists():
+
+                with pd.ExcelWriter(
+                    excel_path,
+                    engine="openpyxl",
+                    mode="a",
+                    if_sheet_exists="overlay"
+                ) as writer:
+
+                    try:
+
+                        existing_df = pd.read_excel(
+                            excel_path,
+                            sheet_name=sheet_name
+                        )
+
+                        startrow = len(existing_df) + 1
+                        header = False
+
+                    except Exception:
+
+                        startrow = 0
+                        header = True
+
+                    new_row_df.to_excel(
+                        writer,
+                        sheet_name=sheet_name,
+                        index=False,
+                        header=header,
+                        startrow=startrow
+                    )
+
+            else:
+
+                with pd.ExcelWriter(
+                    excel_path,
+                    engine="openpyxl"
+                ) as writer:
+
+                    new_row_df.to_excel(
+                        writer,
+                        sheet_name=sheet_name,
+                        index=False
+                    )
+
+            logging.info(
+                f"Updated Excel: {excel_path}"
+            )
+
+            continue
+
+        # ====================================================
+        # CONSULTATION PAPER
+        # ====================================================
+
+        if subcategory == "consultation paper":
+
+            logging.info(
+                f"Processing consultation paper: {title}"
+            )
+
+            pdf_path = Path(
+                row["Path"]
+            )
+
+            if not pdf_path.exists():
+
+                logging.warning(
+                    f"Missing PDF: {pdf_path}"
+                )
+
+                continue
+
+            consultation_output = (
+                process_consultation_paper(
+                    pdf_path=str(pdf_path)
+                )
+            )
+
+            summary = consultation_output[
+                "summary"
+            ]
+
+            month_folder = (
+                RUN_MONTH
+                if RUN_MONTH
+                else datetime.today().strftime("%Y-%m")
+            )
+
+            excel_output_dir = (
+                BASE_DIR /
+                "data" /
+                "output_excels" /
+                month_folder
+            )
+
+            excel_output_dir.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            vertical_name = str(
+                row.get("Verticals", "Unknown")
+            ).strip()
+
+            safe_vertical_name = re.sub(
+                r'[\\/*?:\\[\\]]',
+                "_",
+                vertical_name
+            )
+
+            excel_path = (
+                excel_output_dir /
+                f"{safe_vertical_name}.xlsx"
+            )
+
+            sheet_name = str(
+                row.get("SubCategory", "General")
+            ).strip()[:31]
+
+            summary = _html.unescape(
+                summary
+            )
+
+            final_excel_data = {
+
+                "Verticals":
+                    row.get("Verticals", ""),
+
+                "SubCategory":
+                    row.get("SubCategory", ""),
+
+                "Year":
+                    row.get("Year", ""),
+
+                "Month":
+                    row.get("Month", ""),
+
+                "IssueDate":
+                    str(row.get("IssueDate", "")),
+
+                "Title":
+                    row.get("Title", ""),
+
+                "PDF_URL":
+                    row.get("PDF_URL", ""),
+
+                "File Name":
+                    row.get("File Name", ""),
+
+                "Path":
+                    row.get("Path", ""),
+
+                "Summary":
+                    summary
+            }
+
+            new_row_df = pd.DataFrame(
+                [final_excel_data]
+            )
+
+            if excel_path.exists():
+
+                with pd.ExcelWriter(
+                    excel_path,
+                    engine="openpyxl",
+                    mode="a",
+                    if_sheet_exists="overlay"
+                ) as writer:
+
+                    try:
+
+                        existing_df = pd.read_excel(
+                            excel_path,
+                            sheet_name=sheet_name
+                        )
+
+                        startrow = len(existing_df) + 1
+                        header = False
+
+                    except Exception:
+
+                        startrow = 0
+                        header = True
+
+                    new_row_df.to_excel(
+                        writer,
+                        sheet_name=sheet_name,
+                        index=False,
+                        header=header,
+                        startrow=startrow
+                    )
+
+            else:
+
+                with pd.ExcelWriter(
+                    excel_path,
+                    engine="openpyxl"
+                ) as writer:
+
+                    new_row_df.to_excel(
+                        writer,
+                        sheet_name=sheet_name,
+                        index=False
+                    )
+
+            logging.info(
+                f"Updated Excel: {excel_path}"
+            )
+
+            continue
+
+        # ====================================================
+        # PRESS RELEASE
+        # ====================================================
+
+        if subcategory == "press release":
+
+            logging.info(
+                f"Processing press release: {title}"
+            )
+
+            pdf_path = Path(
+                row["Path"]
+            )
+
+            if not pdf_path.exists():
+
+                logging.warning(
+                    f"Missing PDF: {pdf_path}"
+                )
+
+                continue
+
+            press_release_output = (
+                process_press_release(
+                    pdf_path=str(pdf_path)
+                )
+            )
+            summary = press_release_output[
+                "summary"
+            ]
+
+            month_folder = (
+                RUN_MONTH
+                if RUN_MONTH
+                else datetime.today().strftime("%Y-%m")
+            )
+
+            excel_output_dir = (
+                BASE_DIR /
+                "data" /
+                "output_excels" /
+                month_folder
+            )
+
+            excel_output_dir.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            vertical_name = str(
+                row.get("Verticals", "Unknown")
+            ).strip()
+
+            safe_vertical_name = re.sub(
+                r'[\\/*?:\\[\\]]',
+                "_",
+                vertical_name
+            )
+
+            excel_path = (
+                excel_output_dir /
+                f"{safe_vertical_name}.xlsx"
+            )
+
+            sheet_name = str(
+                row.get("SubCategory", "General")
+            ).strip()[:31]
+
+            summary = _html.unescape(
+                summary
+            )
 
             final_excel_data = {
 
