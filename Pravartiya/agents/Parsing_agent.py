@@ -42,6 +42,9 @@ from SEBI_other_subdomains.SEBI_informal_guidance import (process_informal_guida
 from SEBI_other_subdomains.SEBI_master_circular import (process_master_circular)
 from SEBI_other_subdomains.SEBI_consultation_paper import (process_consultation_paper)
 from SEBI_other_subdomains.SEBI_press_release import (process_press_release)
+from SEBI_other_subdomains.SEBI_circulars import (process_circular)
+from SEBI_other_subdomains.SEBI_NSE_BSE_circulars import (process_nse_bse_circular)
+
 # ============================================================
 # CONFIG
 # ============================================================
@@ -57,7 +60,7 @@ EXCEL_PATH = DATA_DIR / "test.xlsx"
 # ============================================================
 
 # RUN_MONTH = None
-RUN_MONTH = "2026-04"
+RUN_MONTH = "2026-05"
 # Examples:
 #
 # RUN_MONTH = None
@@ -910,6 +913,333 @@ def main():
                 "summary"
             ]
 
+            month_folder = (
+                RUN_MONTH
+                if RUN_MONTH
+                else datetime.today().strftime("%Y-%m")
+            )
+
+            excel_output_dir = (
+                BASE_DIR /
+                "data" /
+                "output_excels" /
+                month_folder
+            )
+
+            excel_output_dir.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            vertical_name = str(
+                row.get("Verticals", "Unknown")
+            ).strip()
+
+            safe_vertical_name = re.sub(
+                r'[\\/*?:\\[\\]]',
+                "_",
+                vertical_name
+            )
+
+            excel_path = (
+                excel_output_dir /
+                f"{safe_vertical_name}.xlsx"
+            )
+
+            sheet_name = str(
+                row.get("SubCategory", "General")
+            ).strip()[:31]
+
+            summary = _html.unescape(
+                summary
+            )
+
+            final_excel_data = {
+
+                "Verticals":
+                    row.get("Verticals", ""),
+
+                "SubCategory":
+                    row.get("SubCategory", ""),
+
+                "Year":
+                    row.get("Year", ""),
+
+                "Month":
+                    row.get("Month", ""),
+
+                "IssueDate":
+                    str(row.get("IssueDate", "")),
+
+                "Title":
+                    row.get("Title", ""),
+
+                "PDF_URL":
+                    row.get("PDF_URL", ""),
+
+                "File Name":
+                    row.get("File Name", ""),
+
+                "Path":
+                    row.get("Path", ""),
+
+                "Summary":
+                    summary
+            }
+
+            new_row_df = pd.DataFrame(
+                [final_excel_data]
+            )
+
+            if excel_path.exists():
+
+                with pd.ExcelWriter(
+                    excel_path,
+                    engine="openpyxl",
+                    mode="a",
+                    if_sheet_exists="overlay"
+                ) as writer:
+
+                    try:
+
+                        existing_df = pd.read_excel(
+                            excel_path,
+                            sheet_name=sheet_name
+                        )
+
+                        startrow = len(existing_df) + 1
+                        header = False
+
+                    except Exception:
+
+                        startrow = 0
+                        header = True
+
+                    new_row_df.to_excel(
+                        writer,
+                        sheet_name=sheet_name,
+                        index=False,
+                        header=header,
+                        startrow=startrow
+                    )
+
+            else:
+
+                with pd.ExcelWriter(
+                    excel_path,
+                    engine="openpyxl"
+                ) as writer:
+
+                    new_row_df.to_excel(
+                        writer,
+                        sheet_name=sheet_name,
+                        index=False
+                    )
+
+            logging.info(
+                f"Updated Excel: {excel_path}"
+            )
+
+            continue
+
+        # ====================================================
+        # CIRCULARS
+        # ====================================================
+
+        if subcategory == "circulars":
+
+            logging.info(
+                f"Processing circular: {title}"
+            )
+
+            pdf_path = Path(
+                row["Path"]
+            )
+
+            if not pdf_path.exists():
+
+                logging.warning(
+                    f"Missing PDF: {pdf_path}"
+                )
+
+                continue
+
+            circular_output = (
+                process_circular(
+                    pdf_path=str(pdf_path)
+                )
+            )
+
+            summary = circular_output[
+                "summary"
+            ]
+
+            month_folder = (
+                RUN_MONTH
+                if RUN_MONTH
+                else datetime.today().strftime("%Y-%m")
+            )
+
+            excel_output_dir = (
+                BASE_DIR /
+                "data" /
+                "output_excels" /
+                month_folder
+            )
+
+            excel_output_dir.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            vertical_name = str(
+                row.get("Verticals", "Unknown")
+            ).strip()
+
+            safe_vertical_name = re.sub(
+                r'[\\/*?:\\[\\]]',
+                "_",
+                vertical_name
+            )
+
+            excel_path = (
+                excel_output_dir /
+                f"{safe_vertical_name}.xlsx"
+            )
+
+            sheet_name = str(
+                row.get("SubCategory", "General")
+            ).strip()[:31]
+
+            summary = _html.unescape(
+                summary
+            )
+
+            final_excel_data = {
+
+                "Verticals":
+                    row.get("Verticals", ""),
+
+                "SubCategory":
+                    row.get("SubCategory", ""),
+
+                "Year":
+                    row.get("Year", ""),
+
+                "Month":
+                    row.get("Month", ""),
+
+                "IssueDate":
+                    str(row.get("IssueDate", "")),
+
+                "Title":
+                    row.get("Title", ""),
+
+                "PDF_URL":
+                    row.get("PDF_URL", ""),
+
+                "File Name":
+                    row.get("File Name", ""),
+
+                "Path":
+                    row.get("Path", ""),
+
+                "Summary":
+                    summary
+            }
+
+            new_row_df = pd.DataFrame(
+                [final_excel_data]
+            )
+
+            if excel_path.exists():
+
+                with pd.ExcelWriter(
+                    excel_path,
+                    engine="openpyxl",
+                    mode="a",
+                    if_sheet_exists="overlay"
+                ) as writer:
+
+                    try:
+
+                        existing_df = pd.read_excel(
+                            excel_path,
+                            sheet_name=sheet_name
+                        )
+
+                        startrow = len(existing_df) + 1
+                        header = False
+
+                    except Exception:
+
+                        startrow = 0
+                        header = True
+
+                    new_row_df.to_excel(
+                        writer,
+                        sheet_name=sheet_name,
+                        index=False,
+                        header=header,
+                        startrow=startrow
+                    )
+
+            else:
+
+                with pd.ExcelWriter(
+                    excel_path,
+                    engine="openpyxl"
+                ) as writer:
+
+                    new_row_df.to_excel(
+                        writer,
+                        sheet_name=sheet_name,
+                        index=False
+                    )
+
+            logging.info(
+                f"Updated Excel: {excel_path}"
+            )
+
+            continue
+
+        # ====================================================
+        # NSE / BSE CIRCULARS
+        # ====================================================
+
+        if subcategory in [
+            "circular-nse",
+            "circular-bse"
+        ]:
+
+            logging.info(
+                f"Processing NSE/BSE circular: {title}"
+            )
+
+            pdf_path = Path(
+                row["Path"]
+            )
+
+            if not pdf_path.exists():
+
+                logging.warning(
+                    f"Missing PDF: {pdf_path}"
+                )
+
+                continue
+
+            nse_bse_output = (
+                process_nse_bse_circular(
+                    pdf_path=str(pdf_path)
+                )
+            )
+
+
+            summary = nse_bse_output["summary"]
+            summary = _html.unescape(summary)
+            # This safely maps any lingering raw brackets to your new hyphen standard
+            summary = summary.replace("&gt;", "-").replace("->", "-").replace(" - ", " - ")
+            # -------------------------------
             month_folder = (
                 RUN_MONTH
                 if RUN_MONTH

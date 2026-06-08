@@ -192,6 +192,21 @@ RULES:
 
 IMPORTANT:
 
+Before identifying any query, you MUST first generate a section titled:
+
+Background and Facts
+
+The Background and Facts section is mandatory.
+
+If the document contains representations, facts, background paragraphs,
+applicant submissions, factual statements, numbered facts (such as 1.1, 1.2,
+1.3, etc.) or any section describing the circumstances leading to the query,
+those facts MUST be summarized under Background and Facts.
+
+Do NOT start the output with Query.
+
+A summary that begins with Query and omits Background and Facts is incorrect.
+
 Many SEBI letters provide:
 - all queries first
 - all responses later
