@@ -33,6 +33,7 @@ import html as _html
 # ============================================================
 
 from SEBI_Regulations.Extract_Chunks_1 import process_regulation_pdf
+from SEBI_Regulations.Subsection_Chunks_1b import create_subsection_chunks
 from SEBI_Regulations.Extract_footnote_2 import (process_regulation_footnotes)
 from SEBI_Regulations.Filtered_footnote_3 import (filter_footers_by_date)
 from SEBI_Regulations.Mapping_chunk_footer_4 import (map_footers_to_exact_chapter_sections)
@@ -44,7 +45,7 @@ from SEBI_other_subdomains.SEBI_consultation_paper import (process_consultation_
 from SEBI_other_subdomains.SEBI_press_release import (process_press_release)
 from SEBI_other_subdomains.SEBI_circulars import (process_circular)
 from SEBI_other_subdomains.SEBI_NSE_BSE_circulars import (process_nse_bse_circular)
-
+from SEBI_other_subdomains.ignore_from_titles import (should_ignore_title)
 # ============================================================
 # CONFIG
 # ============================================================
@@ -60,7 +61,7 @@ EXCEL_PATH = DATA_DIR / "test.xlsx"
 # ============================================================
 
 # RUN_MONTH = None
-RUN_MONTH = "2026-05"
+RUN_MONTH = "2026-01"
 # Examples:
 #
 # RUN_MONTH = None
@@ -399,14 +400,29 @@ def main():
 
     results = []
 
+    # for _, row in df.iterrows():
+
+    #     title = row.get("Title", "")
+
+    #     subcategory = str(
+    #         row.get("SubCategory", "")
+    #     ).strip().lower()
+
     for _, row in df.iterrows():
 
         title = row.get("Title", "")
 
+        if should_ignore_title(title):
+
+            logging.info(
+                f"Ignoring title: {title}"
+            )
+
+            continue
+
         subcategory = str(
             row.get("SubCategory", "")
         ).strip().lower()
-
         # ====================================================
         # INFORMAL GUIDANCE
         # ====================================================
@@ -436,6 +452,7 @@ def main():
             )
 
             summary = informal_output["summary"]
+
 
             month_folder = (
                 RUN_MONTH
@@ -752,7 +769,7 @@ def main():
             summary = consultation_output[
                 "summary"
             ]
-
+         
             month_folder = (
                 RUN_MONTH
                 if RUN_MONTH
@@ -912,7 +929,7 @@ def main():
             summary = press_release_output[
                 "summary"
             ]
-
+            
             month_folder = (
                 RUN_MONTH
                 if RUN_MONTH
@@ -1064,16 +1081,23 @@ def main():
 
                 continue
 
+            # circular_output = (
+            #     process_circular(
+            #         pdf_path=str(pdf_path)
+            #     )
+            # )
             circular_output = (
                 process_circular(
-                    pdf_path=str(pdf_path)
+                    pdf_path=str(pdf_path),
+                    issue_date=str(
+                        row.get("IssueDate", "")
+                    ).strip()
                 )
             )
-
             summary = circular_output[
                 "summary"
             ]
-
+            
             month_folder = (
                 RUN_MONTH
                 if RUN_MONTH
@@ -1228,14 +1252,22 @@ def main():
 
                 continue
 
+            # nse_bse_output = (
+            #     process_nse_bse_circular(
+            #         pdf_path=str(pdf_path)
+            #     )
+            # )
             nse_bse_output = (
                 process_nse_bse_circular(
-                    pdf_path=str(pdf_path)
+                    pdf_path=str(pdf_path),
+                    issue_date=str(
+                        row.get("IssueDate", "")
+                    ).strip()
                 )
             )
 
-
             summary = nse_bse_output["summary"]
+            
             summary = _html.unescape(summary)
             # This safely maps any lingering raw brackets to your new hyphen standard
             summary = summary.replace("&gt;", "-").replace("->", "-").replace(" - ", " - ")
@@ -1475,7 +1507,7 @@ def main():
             pdf_path=str(consolidated_pdf_path),
             title=matched_row["Title"]
         )
-
+        subsection_chunks = create_subsection_chunks(chunks)
         # ========================================================
         # FOOTNOTE EXTRACTION
         # ========================================================
@@ -1640,7 +1672,11 @@ def main():
             "chunks":
                 chunks
         }
-
+        subsection_chunks_data = {
+            **metadata,
+            "total_chunks": len(subsection_chunks),
+            "chunks": subsection_chunks
+        }
         # ========================================================
         # FOOTNOTES JSON
         # ========================================================
@@ -1671,6 +1707,76 @@ def main():
                 summarized_footnotes
         }
 
+
+        # ========================================================
+        # SAVE CHUNKS JSON
+        # ========================================================
+
+        chunks_path = output_dir / "chunks.json"
+
+        with open(
+            chunks_path,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                chunks_data,
+                f,
+                indent=4,
+                ensure_ascii=False
+            )
+
+        logging.info(
+            f"Saved chunks JSON: {chunks_path}"
+        )
+
+        # ========================================================
+        # SAVE SUBSECTION CHUNKS JSON
+        # ========================================================
+
+        subsection_chunks_path = output_dir / "subsection_chunks.json"
+
+        with open(
+            subsection_chunks_path,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                subsection_chunks_data,
+                f,
+                indent=4,
+                ensure_ascii=False
+            )
+
+        logging.info(
+            f"Saved subsection chunks JSON: {subsection_chunks_path}"
+        )
+
+        # ========================================================
+        # SAVE FOOTNOTES JSON
+        # ========================================================
+
+        footnotes_path = output_dir / "footnotes.json"
+
+        with open(
+            footnotes_path,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                footnotes_data,
+                f,
+                indent=4,
+                ensure_ascii=False
+            )
+
+        logging.info(
+            f"Saved footnotes JSON: {footnotes_path}"
+        )
+
         # ========================================================
         # SAVE MAPPED FOOTNOTES JSON
         # ========================================================
@@ -1698,52 +1804,6 @@ def main():
             f"{mapped_footnotes_path}"
         )
 
-
-        # ========================================================
-        # SAVE CHUNKS JSON
-        # ========================================================
-
-        chunks_path = output_dir / "chunks.json"
-
-        with open(
-            chunks_path,
-            "w",
-            encoding="utf-8"
-        ) as f:
-
-            json.dump(
-                chunks_data,
-                f,
-                indent=4,
-                ensure_ascii=False
-            )
-
-        logging.info(
-            f"Saved chunks JSON: {chunks_path}"
-        )
-
-        # ========================================================
-        # SAVE FOOTNOTES JSON
-        # ========================================================
-
-        footnotes_path = output_dir / "footnotes.json"
-
-        with open(
-            footnotes_path,
-            "w",
-            encoding="utf-8"
-        ) as f:
-
-            json.dump(
-                footnotes_data,
-                f,
-                indent=4,
-                ensure_ascii=False
-            )
-
-        logging.info(
-            f"Saved footnotes JSON: {footnotes_path}"
-        )
 
         # ========================================================
         # OUTPUT EXCEL DIRECTORY

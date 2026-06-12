@@ -339,11 +339,17 @@ def generate_gist(text: str, exchange: str) -> str:
 # MAIN ENTRY POINT PROCESSOR
 # ============================================================
 
-def process_nse_bse_circular(pdf_path, metadata=None):
+# def process_nse_bse_circular(pdf_path, metadata=None):
+def process_nse_bse_circular(
+    pdf_path,
+    issue_date=None,
+    metadata=None
+):
     try:
         text = extract_pdf_text(pdf_path)
         exchange = detect_exchange(text, pdf_path=str(pdf_path))
-        circular_date = extract_circular_date(text)
+        # circular_date = extract_circular_date(text)
+        circular_date = str(issue_date).strip()
         effective_date = extract_effective_date(text)
         gist = generate_gist(text=text, exchange=exchange)
 
