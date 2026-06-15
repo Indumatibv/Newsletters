@@ -431,7 +431,16 @@ def generate_master_summary(mapped_data,effective_date):
                 continue
 
         # ----- Collect -----
-        regulation_map[regulation_number]["gists"].append((gist, existing))
+        # regulation_map[regulation_number]["gists"].append((gist, existing))
+       
+        regulation_map[regulation_number]["gists"].append(
+            (
+                footer_id,
+                gist,
+                existing,
+                footer_text
+            )
+        )
 
         # Action point
         if action:
@@ -469,36 +478,111 @@ def generate_master_summary(mapped_data,effective_date):
 
     for reg_no in sorted_regs:
         data_reg = regulation_map[reg_no]
-        raw_entries = data_reg["gists"]
+        # raw_entries = data_reg["gists"]
 
         # Deduplicate gists for this regulation
-        unique_gist_texts = deduplicate_gists([g for g, _ in raw_entries])
+        # unique_gist_texts = deduplicate_gists([g for g, _ in raw_entries])
 
+        raw_entries = data_reg["gists"]
+
+        unique_gist_texts = deduplicate_gists(
+            [g for _, g, _, _ in raw_entries]
+        )
         # Map unique gists back to their existing provisions
         # (use the first matching existing for each unique gist)
-        gist_to_existing = {}
-        for g, e in raw_entries:
-            fixed_g = fix_rupee_footnote_confusion(g)
-            # Find which unique gist this maps to
-            for ug in unique_gist_texts:
-                if jaccard_similarity(fixed_g, ug) >= 0.55 and ug not in gist_to_existing:
-                    if e and not re.search(r'not explicitly mentioned', e, re.IGNORECASE):
-                        gist_to_existing[ug] = e
-                    break
+        # gist_to_existing = {}
+        # # for g, e in raw_entries:
+        # for footer_no, g, e in raw_entries:
+        #     fixed_g = fix_rupee_footnote_confusion(g)
+        #     # Find which unique gist this maps to
+        #     for ug in unique_gist_texts:
+        #         if jaccard_similarity(fixed_g, ug) >= 0.55 and ug not in gist_to_existing:
+        #             if e and not re.search(r'not explicitly mentioned', e, re.IGNORECASE):
+        #                 gist_to_existing[ug] = e
+        #             break
+        gist_details = {}
 
+        # for footer_no, g, e in raw_entries:
+        for footer_no, g, e, footer_text in raw_entries:
+
+            fixed_g = fix_rupee_footnote_confusion(g)
+
+            for ug in unique_gist_texts:
+
+                if jaccard_similarity(
+                    fixed_g,
+                    ug
+                ) >= 0.55 and ug not in gist_details:
+
+                    # gist_details[ug] = {
+                    #     "footer_no": footer_no,
+                    #     "existing": e
+                    # }
+
+                    gist_details[ug] = {
+                        "footer_no": footer_no,
+                        "footer_text": footer_text
+                    }
+                    
+                    break
         lines.append(f"Regulation Number: {reg_no}")
 
-        seen_existing = set()
+        # for ug in unique_gist_texts:
+        #     lines.append(f"  Gist of amendment: {ug}")
+        #     ex = gist_to_existing.get(ug, "")
+        #     norm_ex = normalize(ex)
+        #     if ex and norm_ex not in seen_existing:
+        #         lines.append(f"Existing provisions of Law prior to amendment: {ex}")
+        #         seen_existing.add(norm_ex)
+
+        # lines.append("")
+
         for ug in unique_gist_texts:
-            lines.append(f"  Gist of amendment: {ug}")
-            ex = gist_to_existing.get(ug, "")
-            norm_ex = normalize(ex)
-            if ex and norm_ex not in seen_existing:
-                lines.append(f"  Gist of Existing provisions of Law prior to amendment: {ex}")
-                seen_existing.add(norm_ex)
 
+            footer_no = gist_details.get(
+                ug,
+                {}
+            ).get(
+                "footer_no",
+                ""
+            )
+
+            lines.append(
+                f"  Footer Number: {footer_no}"
+            )
+
+            lines.append(
+                f"  Gist of amendment: {ug}"
+            )
+
+            # ex = gist_details.get(
+            #     ug,
+            #     {}
+            # ).get(
+            #     "existing",
+            #     ""
+            # )
+            footer_text = gist_details.get(
+                ug,
+                {}
+            ).get(
+                "footer_text",
+                ""
+            )
+
+            # if ex and norm_ex not in seen_existing:
+
+            #     lines.append(
+            #         f"  Existing provisions of Law prior to amendment: {ex}"
+            #     )
+
+            #     seen_existing.add(norm_ex)
+            if footer_text:
+
+                lines.append(
+                    f"  Existing provisions of Law prior to amendment: {footer_text}"
+                )
         lines.append("")
-
     # ----------------------------------------------------------
     # Action points (deduplicated)
     # ----------------------------------------------------------
