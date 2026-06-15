@@ -4,7 +4,7 @@ from typing import List
 
 from unstructured.partition.pdf import partition_pdf
 from langchain_community.llms import Ollama
-from SEBI_other_subdomains.ignore_from_pdf import (should_ignore_pdf)
+from agents.SEBI_other_subdomains.ignore_from_pdf import (should_ignore_pdf)
 
 # Initialize the model as per your environment
 llm = Ollama(model="mistral:latest")

@@ -44,10 +44,16 @@ def map_footers_to_exact_chapter_sections(
 
                 if sec_no:
 
-                    matched_boundaries.add(
-                        (ch_name, sec_no)
-                    )
+                    # matched_boundaries.add(
+                    #     (ch_name, sec_no)
+                    # )
+                    sub_no = str(
+                        chunk.get("subsection") or ""
+                    ).strip()
 
+                    matched_boundaries.add(
+                        (ch_name, sec_no, sub_no)
+                    )
         # ====================================================
         # COLLECT MATCHING CHUNKS
         # ====================================================
@@ -56,6 +62,18 @@ def map_footers_to_exact_chapter_sections(
 
         for chunk in regulation_chunks:
 
+            # current_ch = str(
+            #     chunk.get("chapter") or ""
+            # ).strip()
+
+            # current_sec = str(
+            #     chunk.get("section") or ""
+            # ).strip()
+
+            # if (
+            #     current_ch,
+            #     current_sec
+            # ) in matched_boundaries:
             current_ch = str(
                 chunk.get("chapter") or ""
             ).strip()
@@ -64,11 +82,15 @@ def map_footers_to_exact_chapter_sections(
                 chunk.get("section") or ""
             ).strip()
 
+            current_sub = str(
+                chunk.get("subsection") or ""
+            ).strip()
+
             if (
                 current_ch,
-                current_sec
+                current_sec,
+                current_sub
             ) in matched_boundaries:
-
                 matched_chunk_copy = chunk.copy()
 
                 if (
@@ -93,13 +115,18 @@ def map_footers_to_exact_chapter_sections(
             "footer_text":
                 footer_text,
 
+            # "matched_scopes": [
+
+            #     f"{ch} -> Section {sec}"
+
+            #     for ch, sec in matched_boundaries
+            # ],
             "matched_scopes": [
 
-                f"{ch} -> Section {sec}"
+                f"{ch} -> Section {sec}" + (f" -> {sub}" if sub else "")
 
-                for ch, sec in matched_boundaries
+                for ch, sec, sub in matched_boundaries
             ],
-
             "mapped_regulation_chunks":
                 matching_chunks
         }

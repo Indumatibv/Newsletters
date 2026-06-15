@@ -9,11 +9,14 @@ def extract_all_footers_by_page(pdf_path):
 
     # This pattern isolates a footnote starting with a number and legal keyword.
     # By running it page-by-page, \Z correctly marks the absolute bottom of the current page.
+    # footnote_pattern = re.compile(
+    #     r'\n\s*(\d+)\s+((?:Inserted|Substituted|Omitted|Amended|Prior|Modified|w\.e\.f\.).*?)(?=\n\s*\d+\s+(?:Inserted|Substituted|Omitted|Amended|Prior|Modified|w\.e\.f\.)|\n\n|\Z)',
+    #     re.DOTALL | re.IGNORECASE
+    # )
     footnote_pattern = re.compile(
-        r'\n\s*(\d+)\s+((?:Inserted|Substituted|Omitted|Amended|Prior|Modified|w\.e\.f\.).*?)(?=\n\s*\d+\s+(?:Inserted|Substituted|Omitted|Amended|Prior|Modified|w\.e\.f\.)|\n\n|\Z)',
+        r'\n\s*(\d+)\s+((?:Inserted|Substituted|Omitted|Amended|Prior|Modified|w\.e\.f\.|ibid).*?)(?=\n\s*\d+\s+(?:Inserted|Substituted|Omitted|Amended|Prior|Modified|w\.e\.f\.|ibid)|\n\n|\Z)',
         re.DOTALL | re.IGNORECASE
     )
-
     with pdfplumber.open(pdf_path) as pdf:
         for page_num, page in enumerate(pdf.pages, 1):
             page_text = page.extract_text()

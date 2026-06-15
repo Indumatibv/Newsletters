@@ -32,20 +32,20 @@ import html as _html
 # IMPORT FROM Extract_Chunks_1.py.py
 # ============================================================
 
-from SEBI_Regulations.Extract_Chunks_1 import process_regulation_pdf
-from SEBI_Regulations.Subsection_Chunks_1b import create_subsection_chunks
-from SEBI_Regulations.Extract_footnote_2 import (process_regulation_footnotes)
-from SEBI_Regulations.Filtered_footnote_3 import (filter_footers_by_date)
-from SEBI_Regulations.Mapping_chunk_footer_4 import (map_footers_to_exact_chapter_sections)
-from SEBI_Regulations.Summary_all_5 import (process_all_footers)
-from SEBI_Regulations.Combined_summary_6 import (generate_master_summary)
-from SEBI_other_subdomains.SEBI_informal_guidance import (process_informal_guidance)
-from SEBI_other_subdomains.SEBI_master_circular import (process_master_circular)
-from SEBI_other_subdomains.SEBI_consultation_paper import (process_consultation_paper)
-from SEBI_other_subdomains.SEBI_press_release import (process_press_release)
-from SEBI_other_subdomains.SEBI_circulars import (process_circular)
-from SEBI_other_subdomains.SEBI_NSE_BSE_circulars import (process_nse_bse_circular)
-from SEBI_other_subdomains.ignore_from_titles import (should_ignore_title)
+from agents.SEBI_Regulations.Extract_Chunks_1 import process_regulation_pdf
+from agents.SEBI_Regulations.Subsection_Chunks_1b import create_subsection_chunks
+from agents.SEBI_Regulations.Extract_footnote_2 import (process_regulation_footnotes)
+from agents.SEBI_Regulations.Filtered_footnote_3 import (filter_footers_by_date)
+from agents.SEBI_Regulations.Mapping_chunk_footer_4 import (map_footers_to_exact_chapter_sections)
+from agents.SEBI_Regulations.Summary_all_5 import (process_all_footers)
+from agents.SEBI_Regulations.Combined_summary_6 import (generate_master_summary)
+from agents.SEBI_other_subdomains.SEBI_informal_guidance import (process_informal_guidance)
+from agents.SEBI_other_subdomains.SEBI_master_circular import (process_master_circular)
+from agents.SEBI_other_subdomains.SEBI_consultation_paper import (process_consultation_paper)
+from agents.SEBI_other_subdomains.SEBI_press_release import (process_press_release)
+from agents.SEBI_other_subdomains.SEBI_circulars import (process_circular)
+from agents.SEBI_other_subdomains.SEBI_NSE_BSE_circulars import (process_nse_bse_circular)
+from agents.SEBI_other_subdomains.ignore_from_titles import (should_ignore_title)
 # ============================================================
 # CONFIG
 # ============================================================
@@ -1531,6 +1531,16 @@ def main():
         # MAP FILTERED FOOTNOTES TO REGULATION CHUNKS
         # ========================================================
 
+        # mapped_footnotes = (
+        #     map_footers_to_exact_chapter_sections(
+
+        #         filtered_footnotes=
+        #             filtered_footnotes,
+
+        #         regulation_chunks=
+        #             chunks
+        #     )
+        # )
         mapped_footnotes = (
             map_footers_to_exact_chapter_sections(
 
@@ -1538,10 +1548,9 @@ def main():
                     filtered_footnotes,
 
                 regulation_chunks=
-                    chunks
+                    subsection_chunks
             )
         )
-
         # ========================================================
         # GENERATE COMPLIANCE SUMMARIES
         # ========================================================
@@ -1559,10 +1568,11 @@ def main():
         #     mapped_data=summarized_footnotes
         # )
 
-        combined_summary = generate_master_summary(
-            mapped_data=summarized_footnotes,
-            effective_date=effective_date
-        )
+        # combined_summary = generate_master_summary(
+        #     mapped_data=summarized_footnotes,
+        #     effective_date=effective_date
+        # )
+
         logging.info(
             f"Generated summaries for "
             f"{len(summarized_footnotes)} "
@@ -1658,6 +1668,16 @@ def main():
                 str(consolidated_pdf_path)
         }
 
+        # ========================================================
+        # GENERATE COMBINED MASTER SUMMARY
+        # ========================================================
+
+        combined_summary = generate_master_summary(
+            mapped_data={
+                **metadata,
+                "mapped_footnotes": summarized_footnotes
+            }
+        )
         # ========================================================
         # CHUNKS JSON
         # ========================================================
