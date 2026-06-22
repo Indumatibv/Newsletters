@@ -90,9 +90,11 @@ The document is a SEBI Master Circular.
 
 RULES:
 
-- Start EXACTLY with:
+- Return the summary as bullet points.
+- Use "-" for each bullet.
+- The first bullet must start exactly with:
 
-SEBI has issued a master circular for ...
+    SEBI has issued a master circular for ...
 
 - Clearly identify the topic covered by the master circular.
 

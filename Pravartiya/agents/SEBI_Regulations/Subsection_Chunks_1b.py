@@ -91,7 +91,8 @@ def split_into_subsections(regulation_text):
         seg_text = regulation_text[seg_start:seg_end].strip()
         sub_num = m.group(2)
 
-        footer_refs = re.findall(r'\b(\d+)(?=\[)', seg_text)
+        # footer_refs = re.findall(r'\b(\d+)(?=\[)', seg_text)
+        footer_refs = re.findall(r'(?<!\d)(\d{1,3})(?=\[)', seg_text)
         footer_refs = sorted(set(int(x) for x in footer_refs))
 
         # Strip the leading marker itself from the subsection text

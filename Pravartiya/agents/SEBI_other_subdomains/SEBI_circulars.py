@@ -4,7 +4,9 @@ from typing import List
 
 from unstructured.partition.pdf import partition_pdf
 from langchain_community.llms import Ollama
-from agents.SEBI_other_subdomains.ignore_from_pdf import (should_ignore_pdf)
+# from agents.SEBI_other_subdomains.ignore_from_pdf import (should_ignore_pdf)
+
+from SEBI_other_subdomains.ignore_from_pdf import (should_ignore_pdf)
 
 # Initialize the model as per your environment
 llm = Ollama(model="mistral:latest")
@@ -304,12 +306,20 @@ RULES:
 - PROHIBITED — do NOT include background history, previous circular references, or annexure terms.
 - LENGTH LIMIT: Maximum 4 sentences.
 - WORD LIMIT: Maximum 150 words.
+- Return the gist as bullet points.
+- Use "-" for each bullet.
+- Return 2 to 5 bullet points.
+- Each bullet should describe one key amendment, requirement, timeline, disclosure, exemption, threshold, or compliance change.
+- Do not return a paragraph.
+
 - If the circular grants relief to one party by directing another party (e.g., directing stock exchanges not to take penal action), frame the gist around what SEBI has directed, not around who receives the benefit.
 
 DOCUMENT:
 {text}
 
-Return only the gist paragraph starting with the [VERB: ...] tag. No headings. No quotes.
+Return only the gist in bullet points.
+The first bullet must start with the [VERB: ...] tag.
+No headings. No quotes.
 """
 
 ACTION_POINT_PROMPT = """
@@ -446,12 +456,35 @@ def generate_gist(text: str, effective_date: str = "Not specified") -> str:
                 break
             summary_content = cleaned
 
-        if summary_content:
-            summary_content = summary_content[0].lower() + summary_content[1:]
+        # if summary_content:
+        #     summary_content = summary_content[0].lower() + summary_content[1:]
 
-        # Deterministic opening construction using the clean dynamic verb
-        gist_heading = f"The SEBI has issued this circular and {chosen_verb} "
-        result = gist_heading + summary_content
+        # # Deterministic opening construction using the clean dynamic verb
+        # gist_heading = f"The SEBI has issued this circular and {chosen_verb} "
+        # result = gist_heading + summary_content
+
+        if summary_content:
+            summary_content = summary_content.strip()
+
+        # If LLM returned bullets, keep them as-is
+        # if summary_content.startswith("-"):
+        #     result = summary_content
+        if re.search(r'^\s*-\s+', summary_content, re.MULTILINE):
+            result = summary_content
+        
+        else:
+            if summary_content:
+                summary_content = (
+                    summary_content[0].lower() +
+                    summary_content[1:]
+                )
+
+            gist_heading = (
+                f"The SEBI has issued this circular and "
+                f"{chosen_verb} "
+            )
+
+            result = gist_heading + summary_content
 
         # Clean up any trailing hanging quotation marks left behind at the absolute end
         result = result.strip('"').strip("'").strip('”').strip('“').strip()

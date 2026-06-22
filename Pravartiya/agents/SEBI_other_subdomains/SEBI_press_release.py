@@ -54,8 +54,9 @@ The document is a SEBI Press Release.
 
 Requirements:
 
-- Start EXACTLY with:
-
+- Return the summary as bullet points.
+- Use "-" for each bullet.
+- The first bullet must begin with:
   The press release issued states that
 
 - Summarize ONLY the key outcome, decision, action or development that a reader
@@ -82,9 +83,9 @@ Requirements:
   - Dates, unless essential to understanding the outcome
 
 - Keep the summary concise.
-- Write 2 to 3 sentences maximum.
+- Return 2 to 3 bullet points maximum.
 - Maximum 80 words.
-- Write as a single paragraph.
+- Do not write as a single paragraph.
 - Do NOT end with a call to action or website reference.
 
 EXAMPLES OF WHAT NOT TO WRITE:
@@ -171,18 +172,31 @@ def remove_unwanted_sentences(text: str) -> str:
 
     # Clean up any double spaces or leading commas left after removal
     text = re.sub(r'\s*,\s*\.', '.', text)
-    text = re.sub(r'\s{2,}', ' ', text)
+    # text = re.sub(r'\s{2,}', ' ', text)
+    text = re.sub(r'[ \t]{2,}', ' ', text)
     text = text.strip()
     return text
 
 
-def enforce_opening(summary: str) -> str:
-    """Ensures the summary starts with the required phrase."""
-    required = "the press release issued states that"
-    if not summary.lower().startswith(required):
-        summary = "The press release issued states that " + summary.lstrip(". ")
-    return summary
+# def enforce_opening(summary: str) -> str:
+#     """Ensures the summary starts with the required phrase."""
+#     required = "the press release issued states that"
+#     if not summary.lower().startswith(required):
+#         summary = "The press release issued states that " + summary.lstrip(". ")
+#     return summary
 
+def enforce_opening(summary: str) -> str:
+
+    required = "- the press release issued states that"
+
+    if not summary.lower().startswith(required):
+
+        summary = (
+            "- The press release issued states that "
+            + summary.lstrip(".- ")
+        )
+
+    return summary
 
 def truncate_to_word_limit(text: str, max_words: int = 80) -> str:
     """Truncates to max_words at a sentence boundary where possible."""
@@ -216,13 +230,14 @@ def generate_press_release_summary(text: str) -> str:
         summary = remove_unwanted_sentences(summary)
 
         # Normalize whitespace
-        summary = re.sub(r"\s+", " ", summary).strip()
+        # summary = re.sub(r"\s+", " ", summary).strip()
+        summary = re.sub(r"[ \t]+", " ", summary).strip()
 
         # Enforce required opening phrase
         summary = enforce_opening(summary)
 
         # Enforce word limit
-        summary = truncate_to_word_limit(summary, max_words=80)
+        # summary = truncate_to_word_limit(summary, max_words=80)
 
         return summary
 

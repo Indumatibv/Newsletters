@@ -199,7 +199,8 @@ def create_regulation_chunks(title, text):
             regulation_heading = regulation_matches[r_idx]["inferred_heading"].strip()
 
             # Extract Footnote reference numbers
-            footer_refs = re.findall(r'\b(\d+)(?=\[)', regulation_block)
+            # footer_refs = re.findall(r'\b(\d+)(?=\[)', regulation_block)
+            footer_refs = re.findall(r'(?<!\d)(\d{1,3})(?=\[)', regulation_block)
             footer_refs = sorted(list(set([int(x) for x in footer_refs])))
 
             regulation_text = regulation_block
