@@ -76,7 +76,7 @@ EXCEL_PATH = DATA_DIR / "test.xlsx"
 # ============================================================
 
 # RUN_MONTH = None
-RUN_MONTH = "2026-04"
+RUN_MONTH = "2026-07"
 # Examples:
 #
 # RUN_MONTH = None

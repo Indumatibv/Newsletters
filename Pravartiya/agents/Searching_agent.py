@@ -1145,7 +1145,12 @@ async def scrape_sebi_informal_guidance(task, week_start, week_end):
                     detail_html = await resp.text()
                 
                 detail_soup = BeautifulSoup(detail_html, "html.parser")
-                
+                # Get the full title from the detail page
+                for tag in detail_soup.find_all(["h1", "h2", "h3", "h4", "strong", "b", "p", "td"]):
+                    text = tag.get_text(" ", strip=True)
+                    if text.startswith("Request for Informal Guidance"):
+                        title = text
+                        break                
                 # Look for the specific link text you mentioned
                 pdf_link_tag = detail_soup.find("a", string=re.compile("Informal Guidance Letter by SEBI", re.I))
                 
@@ -1429,7 +1434,7 @@ async def main():
     # TARGET_MONTH = None
 
     TARGET_YEAR  = 2026
-    TARGET_MONTH = 5
+    TARGET_MONTH = 7
     month_start, month_end = get_month_range(TARGET_YEAR, TARGET_MONTH)
 
     tasks = load_link_tasks_from_excel()
