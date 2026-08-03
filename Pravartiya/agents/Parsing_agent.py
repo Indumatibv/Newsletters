@@ -102,7 +102,7 @@ logging.basicConfig(
 # ============================================================
 
 AMENDED_TITLE_PATTERN = re.compile(
-    r'last\s+amended\s+on|amended\s+as\s+on',
+    r'last\s+(?:amended|amendment)\s+on|amended\s+as\s+on',
     re.IGNORECASE
 )
 
@@ -206,7 +206,7 @@ def is_amendment_regulation(title: str) -> bool:
 
     return bool(
         re.search(
-            r'\(amendment\)',
+            r'\(\s*(?:[a-z]+\s+)?amendment\s*\)',
             title,
             re.IGNORECASE
         )
@@ -219,15 +219,26 @@ def normalize_regulation_title(title: str) -> str:
 
         return ""
 
+    title = title.replace("’", "'").replace("‘", "'")
+    title = title.replace("“", '"').replace("”", '"')
+    title = title.replace("–", "-").replace("—", "-")
+
     title = re.sub(
-        r'\[(last\s+amended\s+on|amended\s+as\s+on).*?\]',
+        r'(?<=\s|\()((?:and|of|for|to|on|by|with|as))(?=[A-Z])',
+        r'\1 ',
+        title,
+        flags=re.IGNORECASE
+    )
+
+    title = re.sub(
+        r'\[(last\s+(?:amended|amendment)\s+on|amended\s+as\s+on).*?\]',
         '',
         title,
         flags=re.IGNORECASE
     )
 
     title = re.sub(
-        r'\(amendment\)',
+        r'\(\s*(?:[a-z]+\s+)?amendment\s*\)',
         '',
         title,
         flags=re.IGNORECASE
@@ -260,7 +271,7 @@ def find_last_amended_pdf(
 
     amended_rows = df[
         df["Title"].str.contains(
-            r'last\s+amended\s+on|amended\s+as\s+on',
+            r'last\s+(?:amended|amendment)\s+on|amended\s+as\s+on',
             case=False,
             na=False,
             regex=True
