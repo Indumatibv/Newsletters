@@ -49,7 +49,39 @@ try:
     _UC_AVAILABLE = True
 except ImportError:
     _UC_AVAILABLE = False
-  
+
+
+import subprocess
+
+def get_chrome_major_version() -> int | None:
+    """
+    Detect the installed Chrome browser's major version at runtime,
+    so undetected_chromedriver always pairs with the right build.
+    """
+    try:
+        if platform.system() == "Darwin":
+            out = subprocess.check_output(
+                ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "--version"],
+                text=True, timeout=10
+            )
+        elif platform.system() == "Windows":
+            out = subprocess.check_output(
+                ["reg", "query", r"HKCU\Software\Google\Chrome\BLBeacon", "/v", "version"],
+                text=True, timeout=10
+            )
+        else:  # Linux
+            out = subprocess.check_output(
+                ["google-chrome", "--version"], text=True, timeout=10
+            )
+
+        m = re.search(r"(\d+)\.", out)
+        version = int(m.group(1)) if m else None
+        return version
+    except Exception:
+        return None
+
+CHROME_MAJOR_VERSION = get_chrome_major_version()
+
 # ---------------------- Logging ----------------------
 logging.basicConfig(
     level=logging.INFO,
@@ -131,7 +163,7 @@ def safe_pdf_filename(title: str | None, pdf_url: str, max_base_len: int = 80) -
 if platform.system() == "Windows":
     BASE_PATH = r"C:\Users\Admin\Desktop\Indu\Akshayam\Tejomaya_pdfs\Akshayam Data"
 else:
-    BASE_PATH = "/Users/admin/Downloads/Tejomaya_pdfs/Akshayam Data"
+    BASE_PATH = "/Users/apple/Downloads/Tejomaya_pdfs/Akshayam Data"
 
 # Ensure base download folder exists
 os.makedirs(BASE_PATH, exist_ok=True)
@@ -790,6 +822,59 @@ def bse_get_pdf_url_from_detail_page(detail_url: str, driver) -> str | None:
         except Exception:
             pass
 
+# async def scrape_bse(task, week_start, week_end):
+#     logging.info("BSE SCRAPER (Angular) -> %s", task["url"])
+#     run_download_dir = tempfile.mkdtemp(prefix="bse_dl_")
+
+#     MAX_RETRIES = 3
+#     driver = None
+
+#     for attempt in range(1, MAX_RETRIES + 1):
+#         try:
+#             logging.info("BSE: driver attempt %d/%d", attempt, MAX_RETRIES)
+
+#             if _UC_AVAILABLE:
+#                 opts = uc.ChromeOptions()
+#                 opts.add_argument("--no-sandbox")
+#                 opts.add_argument("--disable-dev-shm-usage")
+#                 # driver = uc.Chrome(options=opts, version_main=147)
+#                 prefs = {
+#                     "download.default_directory": run_download_dir,
+#                     "download.prompt_for_download": False,
+#                     "plugins.always_open_pdf_externally": True,
+#                     "download.directory_upgrade": True,
+#                 }
+
+#                 opts.add_experimental_option("prefs", prefs)
+
+#                 driver = uc.Chrome(options=opts, version_main=148)
+#             # else:
+#             #     opts = webdriver.ChromeOptions()
+#             #     opts.add_argument("--no-sandbox")
+#             #     opts.add_argument("--disable-dev-shm-usage")
+#             #     opts.add_argument("--disable-blink-features=AutomationControlled")
+#             #     opts.add_experimental_option("excludeSwitches", ["enable-automation"])
+#             #     opts.add_experimental_option("useAutomationExtension", False)
+#             #     driver = webdriver.Chrome(options=opts)
+#             else:
+#                 opts = webdriver.ChromeOptions()
+#                 opts.add_argument("--no-sandbox")
+#                 opts.add_argument("--disable-dev-shm-usage")
+#                 opts.add_argument("--disable-blink-features=AutomationControlled")
+#                 opts.add_experimental_option("excludeSwitches", ["enable-automation"])
+#                 opts.add_experimental_option("useAutomationExtension", False)
+
+#                 prefs = {
+#                     "download.default_directory": run_download_dir,
+#                     "download.prompt_for_download": False,
+#                     "plugins.always_open_pdf_externally": True,
+#                     "download.directory_upgrade": True,
+#                 }
+
+#                 opts.add_experimental_option("prefs", prefs)
+
+#                 driver = webdriver.Chrome(options=opts)
+
 async def scrape_bse(task, week_start, week_end):
     logging.info("BSE SCRAPER (Angular) -> %s", task["url"])
     run_download_dir = tempfile.mkdtemp(prefix="bse_dl_")
@@ -805,25 +890,14 @@ async def scrape_bse(task, week_start, week_end):
                 opts = uc.ChromeOptions()
                 opts.add_argument("--no-sandbox")
                 opts.add_argument("--disable-dev-shm-usage")
-                # driver = uc.Chrome(options=opts, version_main=147)
                 prefs = {
                     "download.default_directory": run_download_dir,
                     "download.prompt_for_download": False,
                     "plugins.always_open_pdf_externally": True,
                     "download.directory_upgrade": True,
                 }
-
                 opts.add_experimental_option("prefs", prefs)
-
-                driver = uc.Chrome(options=opts, version_main=148)
-            # else:
-            #     opts = webdriver.ChromeOptions()
-            #     opts.add_argument("--no-sandbox")
-            #     opts.add_argument("--disable-dev-shm-usage")
-            #     opts.add_argument("--disable-blink-features=AutomationControlled")
-            #     opts.add_experimental_option("excludeSwitches", ["enable-automation"])
-            #     opts.add_experimental_option("useAutomationExtension", False)
-            #     driver = webdriver.Chrome(options=opts)
+                driver = uc.Chrome(options=opts, version_main=CHROME_MAJOR_VERSION)
             else:
                 opts = webdriver.ChromeOptions()
                 opts.add_argument("--no-sandbox")
@@ -838,9 +912,7 @@ async def scrape_bse(task, week_start, week_end):
                     "plugins.always_open_pdf_externally": True,
                     "download.directory_upgrade": True,
                 }
-
                 opts.add_experimental_option("prefs", prefs)
-
                 driver = webdriver.Chrome(options=opts)
 
             time.sleep(2)  # let uc stabilise before touching the window
